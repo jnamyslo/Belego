@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="backend/assets/Belego.png" alt="Belego Logo" width="400">
+</div>
+
 # 📋 Belego – Moderne Rechnungssoftware für KMU, Handwerk & Dienstleister
 
 > Leistungsstarke, eRechnung-konforme Rechnungs- und Angebotssoftware mit Auftragsverwaltung, Zeiterfassung, Mahnwesen, E‑Mail‑Versand und Backup – entwickelt für den deutschen Markt.

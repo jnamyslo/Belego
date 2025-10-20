@@ -1,10 +1,28 @@
 import pkg from 'pg';
 import dotenv from 'dotenv';
 import logger from './utils/logger.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
 const { Pool } = pkg;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Helper function to load and convert image to base64
+async function loadImageAsBase64(imagePath) {
+  try {
+    const absolutePath = path.resolve(__dirname, imagePath);
+    const imageBuffer = await fs.readFile(absolutePath);
+    const base64 = imageBuffer.toString('base64');
+    const mimeType = imagePath.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    return `data:${mimeType};base64,${base64}`;
+  } catch (error) {
+    logger.warn(`Could not load image ${imagePath}:`, error.message);
+    return null;
+  }
+}
 
 // Database connection configuration
 export const pool = new Pool({
@@ -481,8 +499,12 @@ export async function createTables() {
     // Insert default company data if not exists
     const companyExists = await client.query('SELECT COUNT(*) FROM company WHERE id = 1');
     if (parseInt(companyExists.rows[0].count) === 0) {
+      // Load default logo and icon from assets directory
+      const logo = await loadImageAsBase64('./assets/Belego.png');
+      const icon = await loadImageAsBase64('./assets/Belego_Icon.png');
+      
       await client.query(`
-        INSERT INTO company (id, name, address, city, postal_code, country, phone, email, website, tax_id, bank_account, bic, locale, invoice_start_number)
+        INSERT INTO company (id, name, address, city, postal_code, country, phone, email, website, tax_id, bank_account, bic, locale, invoice_start_number, logo, icon)
         VALUES (
           1,
           'Meine Firma GmbH',
@@ -497,9 +519,13 @@ export async function createTables() {
           'DE89 3704 0044 0532 0130 00',
           'COBADEFFXXX',
           'de-DE',
-          1
+          1,
+          $1,
+          $2
         )
-      `);
+      `, [logo, icon]);
+      
+      logger.info('Default company data created with Belego logo and icon');
     }
 
     // Insert default hourly rates if not exists

@@ -1,0 +1,232 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom checkbox styles */
+@layer components {
+  .custom-checkbox {
+    @apply h-4 w-4 text-blue-600 bg-white border-gray-300 border-2 rounded focus:ring-blue-500 focus:ring-2 focus:border-blue-500;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+  }
+
+  .custom-checkbox:checked {
+    @apply bg-blue-600 border-blue-600;
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m13.854 3.646-8.5 8.5a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L5 11.086l8.146-8.147a.5.5 0 0 1 .708.707z'/%3e%3c/svg%3e");
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .custom-checkbox:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .custom-checkbox:disabled:checked {
+    @apply bg-gray-400 border-gray-400;
+  }
+
+  /* Custom radio button styles */
+  .custom-radio {
+    @apply h-4 w-4 text-blue-600 bg-white border-gray-300 border-2 rounded-full focus:ring-blue-500 focus:ring-2 focus:border-blue-500;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+  }
+
+  .custom-radio:checked {
+    @apply bg-blue-600 border-blue-600;
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='8' cy='8' r='3'/%3e%3c/svg%3e");
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .custom-radio:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .custom-radio:disabled:checked {
+    @apply bg-gray-400 border-gray-400;
+  }
+
+  /* Line clamp utility for responsive text */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* Mobile-optimierte Touch-Targets */
+@layer base {
+  /* Mindestgröße für Touch-Targets (44px) */
+  button, 
+  [role="button"], 
+  input[type="submit"], 
+  input[type="button"] {
+    min-height: 44px;
+  }
+
+  /* Bessere Scrollbar-Styles für Mobile */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Prevent horizontal overflow */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* iOS Safari specific fixes */
+  input, textarea, select {
+    -webkit-appearance: none;
+    border-radius: 0;
+  }
+
+  /* Prevent zoom on iOS when focusing inputs */
+  @media screen and (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+@layer components {
+  /* Mobile-optimierte Button-Styles */
+  .btn-mobile {
+    @apply px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200;
+    @apply active:scale-95 active:bg-opacity-80;
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  /* Responsive Karten */
+  .card-responsive {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200;
+    @apply p-4 lg:p-6;
+  }
+
+  /* Mobile-first Grid */
+  .grid-responsive {
+    @apply grid grid-cols-1 gap-4;
+    @apply md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+
+  /* Mobile-optimierte Form-Gruppen */
+  .form-group {
+    @apply space-y-1;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-gray-700;
+  }
+
+  .form-input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg;
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500;
+    @apply text-sm min-h-[44px];
+  }
+}
+
+@layer utilities {
+  /* Mobile-first responsive text */
+  .text-responsive {
+    font-size: clamp(0.875rem, 2.5vw, 1rem);
+  }
+
+  .text-responsive-lg {
+    font-size: clamp(1rem, 3vw, 1.25rem);
+  }
+
+  .text-responsive-xl {
+    font-size: clamp(1.25rem, 4vw, 1.875rem);
+  }
+
+  /* Safe area insets für iOS */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Touch-friendly spacing */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Prevent text selection on UI elements */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Mobile-optimierte Abstände */
+  .mobile-padding {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  .mobile-margin {
+    @apply mx-4 sm:mx-6 lg:mx-8;
+  }
+
+  /* Responsive Container */
+  .container-responsive {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Better focus states for mobile */
+  .focus-mobile {
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+  }
+
+  /* Improved tap highlights */
+  .tap-highlight-none {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Performance optimizations */
+  .will-change-transform {
+    will-change: transform;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+}

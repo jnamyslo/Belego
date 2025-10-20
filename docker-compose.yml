@@ -1,0 +1,76 @@
+services:
+  database:
+    image: postgres:15-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-belego}-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-belego}
+      POSTGRES_USER: ${POSTGRES_USER:-belego}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-belego123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-belego} -d ${POSTGRES_DB:-belego}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-belego}-backend
+    env_file:
+      - .env.backend.${INSTANCE_NAME:-default}
+    environment:
+      # Override specific container networking settings
+      - DB_HOST=database
+      - DB_PORT=5432
+      # Fallback environment variables if env_file doesn't exist
+      - PORT=3001
+      - NODE_ENV=production
+      # SMTP Configuration
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - EMAIL_FROM_NAME=${EMAIL_FROM_NAME:-}
+    ports:
+      - "${BACKEND_PORT:-3001}:3001"
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-belego}-frontend
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=http://localhost:${BACKEND_PORT:-3001}/api
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - app-network
+    
+volumes:
+  postgres_data:
+    name: ${COMPOSE_PROJECT_NAME:-belego}_postgres_data
+
+networks:
+  app-network:
+    name: ${COMPOSE_PROJECT_NAME:-belego}_network
+    driver: bridge

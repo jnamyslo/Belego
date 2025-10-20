@@ -69,6 +69,58 @@ Suchbegriffe (SEO): Rechnungssoftware, Rechnungsprogramm, eRechnung, ZUGFeRD, XR
 
 ---
 
+## 📸 Screenshots & Einblicke
+
+Erleben Sie Belego in Aktion – hier sind einige Einblicke in die Benutzeroberfläche:
+
+### Dashboard & Übersicht
+<div align="center">
+  <img src="demo/Dashboard.png" alt="Belego Dashboard" width="800">
+  <p><em>Übersichtliches Dashboard mit allen wichtigen Kennzahlen, überfälligen Rechnungen und Schnellzugriffen</em></p>
+</div>
+
+### Rechnungsverwaltung
+<div align="center">
+  <img src="demo/Rechnungseditor.png" alt="Rechnungseditor" width="800">
+  <p><em>Intuitiver Rechnungseditor mit Drag & Drop, Live-Vorschau und Rabatten auf Positions- und Gesamtebene</em></p>
+</div>
+
+<div align="center">
+  <img src="demo/Rechnungsversand.png" alt="Rechnungsversand per E-Mail" width="800">
+  <p><em>E-Mail-Versand mit ZUGFeRD/XRechnung-Unterstützung, mehreren Empfängern und individuellen Anhängen</em></p>
+</div>
+
+<div align="center">
+  <img src="demo/Rechnungsdownload.png" alt="Rechnungsdownload" width="800">
+  <p><em>Multi-Format-Export: Standard-PDF, ZUGFeRD 2.1 und XRechnung 3.0 – alles mit einem Klick</em></p>
+</div>
+
+### Kundenverwaltung & CRM
+<div align="center">
+  <img src="demo/Kundenanlage.png" alt="Kundenverwaltung" width="800">
+  <p><em>Vollständige Kundenverwaltung mit mehreren E-Mail-Adressen, kundenspezifischen Stundensätzen und Materialien</em></p>
+</div>
+
+### Auftrags- & Zeiterfassung
+<div align="center">
+  <img src="demo/Auftragsmanagement.png" alt="Auftragsverwaltung" width="800">
+  <p><em>Professionelles Auftragsmanagement mit Zeiterfassung, Materialien, Status-Tracking und digitaler Unterschrift</em></p>
+</div>
+
+### Mahnwesen
+<div align="center">
+  <img src="demo/Mahnwesen.png" alt="Mahnwesen" width="800">
+  <p><em>Automatisiertes Mahnwesen mit 3 Mahnstufen, konfigurierbaren Gebühren und E-Mail-Versand</em></p>
+</div>
+
+### Reporting & Auswertungen
+<div align="center">
+  <img src="demo/Reportingh.png" alt="Reporting" width="800">
+  <p><em>Umfassende Auswertungen mit Zeitraum-Filtern, Umsatzstatistiken und Kunden-Toplisten</em></p>
+</div>
+
+---
+
 ## 🇩🇪 eRechnung & Compliance
 
 ### Unterstützte Standards

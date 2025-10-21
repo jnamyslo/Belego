@@ -7,7 +7,7 @@
 > Leistungsstarke, eRechnung-konforme Rechnungs- und Angebotssoftware mit Auftragsverwaltung, Zeiterfassung, Mahnwesen, E‑Mail‑Versand und Backup – entwickelt für den deutschen Markt.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Commercial License](https://img.shields.io/badge/Commercial-Lizenz%20verfügbar-green.svg)](mailto:info@namyslo-solutions.de)
+[![Open Source](https://img.shields.io/badge/Open%20Source-100%25-success.svg)](https://github.com/jnamyslo/Belego)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://docker.com)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg)](https://nodejs.org)
 [![React](https://img.shields.io/badge/React-18%2B-blue.svg)](https://reactjs.org)
@@ -267,34 +267,41 @@ Besonders willkommen: Übersetzungen, UI/UX, Reporting, Performance, Doku.
 
 ---
 
-## ⚖️ Lizenzierung (Dual License)
+## ⚖️ Lizenzierung
 
-Dieses Projekt ist dual lizenziert:
+Belego ist **100% Open Source** und lizenziert unter der **GNU Affero General Public License v3.0 (AGPL‑3.0)**.
 
-### AGPL‑3.0 (Open Source)
-- Kostenlos für interne Nutzung, OSS‑Projekte, Bildung, Non‑Profit
-- SaaS nur mit Quellcode‑Bereitstellung und Weitergabe von Änderungen
+### Was bedeutet das?
 
-### Kommerzielle Lizenz
-- Für SaaS ohne Code‑Offenlegung, proprietäre Integration, White‑Label
-- Vorteile: keine Copyleft‑Pflichten, proprietäre Erweiterungen, Prior‑Support
+✅ **Du kannst:**
+- Belego kostenlos für persönliche oder geschäftliche Zwecke nutzen
+- Den Code ändern und an deine Bedürfnisse anpassen
+- Die Software weiterverteilen (auch modifizierte Versionen)
+- Zum Projekt beitragen
 
-Kontakt für kommerzielle Lizenzierung:
-- E‑Mail: info@namyslo-solutions.de
-- Website: `https://belego.app/license`
+✅ **Du musst:**
+- Den Quellcode offenhalten und verfügbar machen
+- Deine Änderungen ebenfalls unter AGPL v3 lizenzieren
+- Copyright‑ und Lizenzhinweise beibehalten
 
-Vergleich:
+### Warum AGPL v3?
 
-| Feature | AGPL v3 | Commercial |
-|---|---|---|
-| Interne Nutzung | ✅ | ✅ |
-| Modifikation | ✅ | ✅ |
-| SaaS ohne Code‑Offenlegung | ❌ | ✅ |
-| Proprietäre Integration | ❌ | ✅ |
-| White‑Label | ❌ | ✅ |
-| Priority Support | ❌ | ✅ |
+Die AGPL v3 schützt die Freiheit der Software auch bei Netzwerk‑Nutzung. Sie sorgt dafür, dass:
+- Belego für immer frei und Open Source bleibt
+- Verbesserungen der gesamten Community zugutekommen
+- Die Community vor proprietären Forks geschützt ist
 
-Volltexte siehe [`LICENSE`](LICENSE).
+### Unterstützung & Kommerzieller Support
+
+Während die Software frei ist, kannst du professionellen Support erhalten:
+- 💼 Managed Hosting Services
+- 🎓 Schulungen und Onboarding
+- 🔧 Individuelle Anpassungen und Features
+- 🚀 Priority Support
+
+Kontakt: info@namyslo-solutions.de
+
+Volltexte siehe [`LICENSE`](LICENSE) oder [gnu.org/licenses/agpl‑3.0.html](https://www.gnu.org/licenses/agpl-3.0.html).
 
 ---
 
@@ -337,6 +344,6 @@ Projekt unterstützen:
 
 —
 
-*Made in Germany 🇩🇪 • Open Source • AGPL‑3.0 / Commercial*
+*Made in Germany 🇩🇪 • 100% Open Source • AGPL‑3.0*
 
 </div>

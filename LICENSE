@@ -1,13 +1,5 @@
-DUAL LICENSE NOTICE
-
-Belego is available under two licenses:
-
-1. GNU Affero General Public License v3.0 (AGPL-3.0) - for open source use
-2. Commercial License - for commercial use without AGPL restrictions
-
-================================================================================
-GNU AFFERO GENERAL PUBLIC LICENSE (AGPL-3.0)
-================================================================================
+GNU AFFERO GENERAL PUBLIC LICENSE
+Version 3, 19 November 2007
 
 Copyright (C) 2025 Belego Contributors
 
@@ -25,37 +17,76 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ================================================================================
-COMMERCIAL LICENSE
+ABOUT THIS LICENSE
 ================================================================================
 
-For commercial use, including but not limited to:
-- Selling the software or services based on it
-- Using it in a commercial SaaS offering without source code disclosure
-- Integrating it into proprietary software
-- White-label solutions
-- Removing the AGPL copyleft requirements
+Belego is licensed under AGPL v3 - a strong copyleft license that ensures
+the software remains free and open source, even when used as a service over
+a network.
 
-A separate commercial license is required.
+✅ What you CAN do:
+- Use Belego for personal or business purposes (free of charge)
+- Modify and customize the software
+- Distribute the software and your modifications
+- Offer Belego as a hosted service (SaaS)
+- Contribute to the project
 
-Commercial licensing inquiries: info@namyslo-solutions.de
+✅ What you MUST do:
+- Keep the source code open and available
+- License your modifications under AGPL v3
+- If you offer Belego as a network service (SaaS), you must make your
+  complete source code (including all modifications) available to your users
+- Include the original copyright and license notices
+- State significant changes made to the software
+
+❌ What you CANNOT do:
+- Make the software proprietary or closed-source
+- Offer Belego as a service without making your source code available
+- Remove or alter license and copyright notices
+- Hold the authors liable for any issues
 
 ================================================================================
-LICENSE TERMS SUMMARY
+WHY AGPL v3?
 ================================================================================
 
-AGPL v3 (Open Source):
-✅ Use for internal business purposes
-✅ Modify and distribute
-✅ Use in open source projects
-❌ Use in SaaS without source disclosure
-❌ Integrate into proprietary software
+The AGPL v3 license ensures that Belego remains free and open source forever,
+while protecting against the "SaaS loophole" where companies could host 
+modified versions without contributing back to the community.
 
-Commercial License:
-✅ Use in commercial SaaS offerings
-✅ Integrate into proprietary software
-✅ White-label and resell
-✅ No source code disclosure required
-✅ Priority support included
+This creates a healthy ecosystem where:
+- Everyone can use and modify the software freely
+- Improvements benefit the entire community
+- Commercial hosting is allowed and encouraged
+- The copyleft protection extends to network use
+
+================================================================================
+SAAS HOSTING
+================================================================================
+
+You are explicitly permitted and encouraged to offer Belego as a hosted
+Software-as-a-Service (SaaS). The AGPL v3 license requires that you:
+
+1. Make your complete source code (including any modifications) available
+   to your users/customers
+2. License your modifications under AGPL v3
+3. Provide clear instructions on how users can obtain the source code
+
+This ensures that the open source spirit is maintained even in commercial
+hosting scenarios.
+
+================================================================================
+CONTRIBUTING
+================================================================================
+
+Contributions to Belego are welcome and appreciated! By contributing, you
+agree that your contributions will be licensed under AGPL v3.
+
+For more information, visit:
+- GitHub: https://github.com/jnamyslo/Belego
+- Full License Text: https://www.gnu.org/licenses/agpl-3.0.html
+- Contact: info@namyslo-solutions.de
+
+================================================================================
 
 For the complete AGPL v3 license text, visit:
 https://www.gnu.org/licenses/agpl-3.0.html

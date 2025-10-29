@@ -637,6 +637,9 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
       taxRate: company?.isSmallBusiness ? 0 : 19,
       total: 0,
       order: items.length + 1,
+      discountType: undefined,
+      discountValue: undefined,
+      discountAmount: 0,
     };
     setItems(prev => [...prev, newItem]);
   };
@@ -656,6 +659,9 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
         taxRate: company?.isSmallBusiness ? 0 : template.taxRate,
         total: parseFloat(template.unitPrice || 0) * 1,
         order: items.length + 1,
+        discountType: undefined,
+        discountValue: undefined,
+        discountAmount: 0,
       };
     } else if (templateType === 'material') {
       // Search in combined templates (both general and customer-specific)
@@ -670,6 +676,9 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
         taxRate: company?.isSmallBusiness ? 0 : (template.taxRate != null ? template.taxRate : 19),
         total: parseFloat(template.unitPrice || 0) * 1,
         order: items.length + 1,
+        discountType: undefined,
+        discountValue: undefined,
+        discountAmount: 0,
       };
     } else { // hourly
       // Search in combined templates (both general and customer-specific)
@@ -684,6 +693,9 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
         taxRate: company?.isSmallBusiness ? 0 : (template.taxRate != null ? template.taxRate : 19),
         total: parseFloat(template.rate || 0) * 1,
         order: items.length + 1,
+        discountType: undefined,
+        discountValue: undefined,
+        discountAmount: 0,
       };
     }
 

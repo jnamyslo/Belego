@@ -41,6 +41,7 @@ router.get('/invoice-journal', async (req, res) => {
         i.issue_date,
         i.due_date,
         i.subtotal,
+        i.global_discount_amount,
         i.tax_amount,
         i.total,
         i.status,
@@ -57,7 +58,12 @@ router.get('/invoice-journal', async (req, res) => {
         CASE 
           WHEN i.status IN ('draft', 'sent') THEN i.total 
           ELSE 0 
-        END as outstanding_amount
+        END as outstanding_amount,
+        (
+          SELECT COALESCE(SUM(COALESCE(discount_amount, 0)), 0)
+          FROM invoice_items
+          WHERE invoice_id = i.id
+        ) as item_discounts_total
       FROM invoices i
       LEFT JOIN customers c ON i.customer_id = c.id
       WHERE ${whereClause}
@@ -73,27 +79,41 @@ router.get('/invoice-journal', async (req, res) => {
       paidAmount: invoices.reduce((sum, inv) => sum + parseFloat(inv.paid_amount), 0),
       overdueAmount: invoices.reduce((sum, inv) => sum + parseFloat(inv.overdue_amount), 0),
       outstandingAmount: invoices.reduce((sum, inv) => sum + parseFloat(inv.outstanding_amount), 0),
-      subtotalSum: invoices.reduce((sum, inv) => sum + parseFloat(inv.subtotal), 0),
+      // Nettosumme mit Rabatten: Subtotal - Item-Rabatte - Global-Rabatt
+      subtotalSum: invoices.reduce((sum, inv) => {
+        const subtotal = parseFloat(inv.subtotal);
+        const itemDiscounts = parseFloat(inv.item_discounts_total || 0);
+        const globalDiscount = parseFloat(inv.global_discount_amount || 0);
+        return sum + (subtotal - itemDiscounts - globalDiscount);
+      }, 0),
       taxSum: invoices.reduce((sum, inv) => sum + parseFloat(inv.tax_amount), 0)
     };
 
     res.json({
-      invoices: invoices.map(inv => ({
-        id: inv.id,
-        invoiceNumber: inv.invoice_number,
-        customerName: inv.customer_name,
-        customerNumber: inv.customer_number,
-        issueDate: inv.issue_date,
-        dueDate: inv.due_date,
-        subtotal: parseFloat(inv.subtotal),
-        taxAmount: parseFloat(inv.tax_amount),
-        total: parseFloat(inv.total),
-        status: inv.status,
-        paidAmount: parseFloat(inv.paid_amount),
-        overdueAmount: parseFloat(inv.overdue_amount),
-        outstandingAmount: parseFloat(inv.outstanding_amount),
-        createdAt: inv.created_at
-      })),
+      invoices: invoices.map(inv => {
+        const subtotal = parseFloat(inv.subtotal);
+        const itemDiscounts = parseFloat(inv.item_discounts_total || 0);
+        const globalDiscount = parseFloat(inv.global_discount_amount || 0);
+        // Nettosumme nach Rabatten
+        const discountedSubtotal = subtotal - itemDiscounts - globalDiscount;
+        
+        return {
+          id: inv.id,
+          invoiceNumber: inv.invoice_number,
+          customerName: inv.customer_name,
+          customerNumber: inv.customer_number,
+          issueDate: inv.issue_date,
+          dueDate: inv.due_date,
+          subtotal: discountedSubtotal, // Netto nach Rabatten
+          taxAmount: parseFloat(inv.tax_amount),
+          total: parseFloat(inv.total),
+          status: inv.status,
+          paidAmount: parseFloat(inv.paid_amount),
+          overdueAmount: parseFloat(inv.overdue_amount),
+          outstandingAmount: parseFloat(inv.outstanding_amount),
+          createdAt: inv.created_at
+        };
+      }),
       summary,
       dateRange: {
         startDate: startDate || null,
@@ -144,6 +164,7 @@ router.post('/invoice-journal/pdf', async (req, res) => {
         i.issue_date,
         i.due_date,
         i.subtotal,
+        i.global_discount_amount,
         i.tax_amount,
         i.total,
         i.status,
@@ -160,7 +181,12 @@ router.post('/invoice-journal/pdf', async (req, res) => {
         CASE 
           WHEN i.status IN ('draft', 'sent') THEN i.total 
           ELSE 0 
-        END as outstanding_amount
+        END as outstanding_amount,
+        (
+          SELECT COALESCE(SUM(COALESCE(discount_amount, 0)), 0)
+          FROM invoice_items
+          WHERE invoice_id = i.id
+        ) as item_discounts_total
       FROM invoices i
       LEFT JOIN customers c ON i.customer_id = c.id
       WHERE ${whereClause}
@@ -176,7 +202,13 @@ router.post('/invoice-journal/pdf', async (req, res) => {
       paidAmount: invoices.reduce((sum, inv) => sum + parseFloat(inv.paid_amount), 0),
       overdueAmount: invoices.reduce((sum, inv) => sum + parseFloat(inv.overdue_amount), 0),
       outstandingAmount: invoices.reduce((sum, inv) => sum + parseFloat(inv.outstanding_amount), 0),
-      subtotalSum: invoices.reduce((sum, inv) => sum + parseFloat(inv.subtotal), 0),
+      // Nettosumme mit Rabatten: Subtotal - Item-Rabatte - Global-Rabatt
+      subtotalSum: invoices.reduce((sum, inv) => {
+        const subtotal = parseFloat(inv.subtotal);
+        const itemDiscounts = parseFloat(inv.item_discounts_total || 0);
+        const globalDiscount = parseFloat(inv.global_discount_amount || 0);
+        return sum + (subtotal - itemDiscounts - globalDiscount);
+      }, 0),
       taxSum: invoices.reduce((sum, inv) => sum + parseFloat(inv.tax_amount), 0)
     };
 
@@ -311,12 +343,18 @@ router.post('/invoice-journal/pdf', async (req, res) => {
         'overdue': 'Überfällig'
       };
 
+      // Berechne Nettosumme nach Rabatten
+      const subtotal = parseFloat(invoice.subtotal);
+      const itemDiscounts = parseFloat(invoice.item_discounts_total || 0);
+      const globalDiscount = parseFloat(invoice.global_discount_amount || 0);
+      const discountedSubtotal = subtotal - itemDiscounts - globalDiscount;
+
       doc.fontSize(8)
          .fillColor('black')
          .text(invoice.invoice_number, 55, yPosition)
          .text(issueDate, 130, yPosition)
          .text(invoice.customer_name?.substring(0, 25) || '', 200, yPosition)
-         .text(parseFloat(invoice.subtotal).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }), 320, yPosition)
+         .text(discountedSubtotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }), 320, yPosition)
          .text(parseFloat(invoice.tax_amount).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }), 380, yPosition)
          .text(parseFloat(invoice.total).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }), 440, yPosition)
          .text(statusMap[invoice.status] || invoice.status, 500, yPosition);
@@ -352,16 +390,24 @@ router.get('/statistics', async (req, res) => {
     // Monthly revenue statistics
     const monthlyRevenueResult = await query(`
       SELECT 
-        EXTRACT(MONTH FROM issue_date) as month,
+        EXTRACT(MONTH FROM i.issue_date) as month,
         COUNT(*) as invoice_count,
-        SUM(subtotal) as subtotal_sum,
-        SUM(tax_amount) as tax_sum,
-        SUM(total) as total_sum,
-        SUM(CASE WHEN status = 'paid' THEN total ELSE 0 END) as paid_sum,
-        SUM(CASE WHEN status = 'overdue' THEN total ELSE 0 END) as overdue_sum
-      FROM invoices
-      WHERE EXTRACT(YEAR FROM issue_date) = $1
-      GROUP BY EXTRACT(MONTH FROM issue_date)
+        SUM(
+          i.subtotal - 
+          COALESCE((
+            SELECT SUM(COALESCE(discount_amount, 0))
+            FROM invoice_items
+            WHERE invoice_id = i.id
+          ), 0) - 
+          COALESCE(i.global_discount_amount, 0)
+        ) as subtotal_sum,
+        SUM(i.tax_amount) as tax_sum,
+        SUM(i.total) as total_sum,
+        SUM(CASE WHEN i.status = 'paid' THEN i.total ELSE 0 END) as paid_sum,
+        SUM(CASE WHEN i.status = 'overdue' THEN i.total ELSE 0 END) as overdue_sum
+      FROM invoices i
+      WHERE EXTRACT(YEAR FROM i.issue_date) = $1
+      GROUP BY EXTRACT(MONTH FROM i.issue_date)
       ORDER BY month
     `, [year]);
 
@@ -395,14 +441,22 @@ router.get('/statistics', async (req, res) => {
     const yearOverviewResult = await query(`
       SELECT 
         COUNT(*) as total_invoices,
-        SUM(subtotal) as total_subtotal,
-        SUM(tax_amount) as total_tax,
-        SUM(total) as total_amount,
-        SUM(CASE WHEN status = 'paid' THEN total ELSE 0 END) as paid_amount,
-        SUM(CASE WHEN status = 'overdue' THEN total ELSE 0 END) as overdue_amount,
-        AVG(total) as avg_invoice_amount
-      FROM invoices
-      WHERE EXTRACT(YEAR FROM issue_date) = $1
+        SUM(
+          i.subtotal - 
+          COALESCE((
+            SELECT SUM(COALESCE(discount_amount, 0))
+            FROM invoice_items
+            WHERE invoice_id = i.id
+          ), 0) - 
+          COALESCE(i.global_discount_amount, 0)
+        ) as total_subtotal,
+        SUM(i.tax_amount) as total_tax,
+        SUM(i.total) as total_amount,
+        SUM(CASE WHEN i.status = 'paid' THEN i.total ELSE 0 END) as paid_amount,
+        SUM(CASE WHEN i.status = 'overdue' THEN i.total ELSE 0 END) as overdue_amount,
+        AVG(i.total) as avg_invoice_amount
+      FROM invoices i
+      WHERE EXTRACT(YEAR FROM i.issue_date) = $1
     `, [year]);
 
     res.json({

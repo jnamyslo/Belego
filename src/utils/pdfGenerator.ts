@@ -47,24 +47,50 @@ export interface QuotePDFOptions {
 }
 
 // Helper function to calculate tax breakdown by rate
-function calculateTaxBreakdown(items: Invoice['items']) {
+function calculateTaxBreakdown(items: Invoice['items'], invoice?: Partial<Invoice>) {
   const taxBreakdown = items.reduce((acc, item) => {
+    // Berechne den Artikelpreis NACH Artikelrabatt
     const itemTotal = item.quantity * item.unitPrice;
+    const itemDiscountAmount = item.discountAmount || 0;
+    const itemTotalAfterDiscount = itemTotal - itemDiscountAmount;
+    
     const taxRate = item.taxRate;
-    const taxAmount = itemTotal * (taxRate / 100);
+    const taxAmount = itemTotalAfterDiscount * (taxRate / 100);
     
     if (acc[taxRate]) {
-      acc[taxRate].taxableAmount += itemTotal;
+      acc[taxRate].taxableAmount += itemTotalAfterDiscount;
       acc[taxRate].taxAmount += taxAmount;
     } else {
       acc[taxRate] = {
-        taxableAmount: itemTotal,
+        taxableAmount: itemTotalAfterDiscount,
         taxAmount: taxAmount
       };
     }
     
     return acc;
   }, {} as Record<number, { taxableAmount: number; taxAmount: number }>);
+  
+  // Wende globalen Rabatt proportional auf alle Steuersätze an
+  if (invoice?.globalDiscountAmount && invoice.globalDiscountAmount > 0) {
+    const subtotalAfterItemDiscounts = items.reduce((sum, item) => {
+      const itemTotal = item.quantity * item.unitPrice;
+      const itemDiscountAmount = item.discountAmount || 0;
+      return sum + (itemTotal - itemDiscountAmount);
+    }, 0);
+    
+    if (subtotalAfterItemDiscounts > 0) {
+      const discountRatio = invoice.globalDiscountAmount / subtotalAfterItemDiscounts;
+      
+      Object.keys(taxBreakdown).forEach(taxRateStr => {
+        const taxRate = Number(taxRateStr);
+        const breakdown = taxBreakdown[taxRate];
+        
+        // Reduziere den steuerpflichtigen Betrag proportional
+        breakdown.taxableAmount = breakdown.taxableAmount * (1 - discountRatio);
+        breakdown.taxAmount = (breakdown.taxableAmount * taxRate) / 100;
+      });
+    }
+  }
   
   return taxBreakdown;
 }
@@ -487,7 +513,7 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
   yPosition += 10; // Reduced from 15 to 10
   
   // Calculate dynamic height for totals box based on tax rates and discounts
-  const taxBreakdownForSizing = calculateTaxBreakdown(invoice.items);
+  const taxBreakdownForSizing = calculateTaxBreakdown(invoice.items, invoice);
   const numberOfTaxRates = Object.keys(taxBreakdownForSizing).filter(rate => Number(rate) > 0).length;
   const showTotalTaxLine = numberOfTaxRates > 1;
   
@@ -569,7 +595,7 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
   }
   
   // Calculate tax breakdown and display each rate separately (exclude 0% rates)
-  const taxBreakdown = calculateTaxBreakdown(invoice.items);
+  const taxBreakdown = calculateTaxBreakdown(invoice.items, invoice);
   const taxRates = Object.keys(taxBreakdown)
     .filter(rate => Number(rate) > 0)
     .sort((a, b) => Number(a) - Number(b));
@@ -999,7 +1025,7 @@ function generateXRechnungXML(invoice: Invoice, options: PDFOptions): Promise<Bl
   
   <cac:TaxTotal>
     <cbc:TaxAmount currencyID="EUR">${formatAmount(invoice.taxAmount)}</cbc:TaxAmount>
-    ${Object.entries(calculateTaxBreakdown(invoice.items))
+    ${Object.entries(calculateTaxBreakdown(invoice.items, invoice))
       .filter(([rate]) => Number(rate) > 0)
       .sort(([rateA], [rateB]) => Number(rateA) - Number(rateB))
       .map(([rate, breakdown]) => `
@@ -1018,9 +1044,9 @@ function generateXRechnungXML(invoice: Invoice, options: PDFOptions): Promise<Bl
   
   <cac:LegalMonetaryTotal>
     <cbc:LineExtensionAmount currencyID="EUR">${formatAmount(invoice.subtotal)}</cbc:LineExtensionAmount>
-    <cbc:TaxExclusiveAmount currencyID="EUR">${formatAmount(invoice.subtotal)}</cbc:TaxExclusiveAmount>
+    <cbc:TaxExclusiveAmount currencyID="EUR">${formatAmount(invoice.subtotal - (invoice.items?.reduce((sum, item) => sum + (item.discountAmount || 0), 0) || 0) - (invoice.globalDiscountAmount || 0))}</cbc:TaxExclusiveAmount>
     <cbc:TaxInclusiveAmount currencyID="EUR">${formatAmount(invoice.total)}</cbc:TaxInclusiveAmount>
-    <cbc:AllowanceTotalAmount currencyID="EUR">0.00</cbc:AllowanceTotalAmount>
+    <cbc:AllowanceTotalAmount currencyID="EUR">${formatAmount((invoice.items?.reduce((sum, item) => sum + (item.discountAmount || 0), 0) || 0) + (invoice.globalDiscountAmount || 0))}</cbc:AllowanceTotalAmount>
     <cbc:ChargeTotalAmount currencyID="EUR">0.00</cbc:ChargeTotalAmount>
     <cbc:PrepaidAmount currencyID="EUR">0.00</cbc:PrepaidAmount>
     <cbc:PayableRoundingAmount currencyID="EUR">0.00</cbc:PayableRoundingAmount>
@@ -1031,7 +1057,7 @@ function generateXRechnungXML(invoice: Invoice, options: PDFOptions): Promise<Bl
   <cac:InvoiceLine>
     <cbc:ID>${index + 1}</cbc:ID>
     <cbc:InvoicedQuantity unitCode="C62">${formatAmount(item.quantity)}</cbc:InvoicedQuantity>
-    <cbc:LineExtensionAmount currencyID="EUR">${formatAmount(item.quantity * item.unitPrice)}</cbc:LineExtensionAmount>
+    <cbc:LineExtensionAmount currencyID="EUR">${formatAmount((item.quantity * item.unitPrice) - (item.discountAmount || 0))}</cbc:LineExtensionAmount>
     <cac:Item>
       <cbc:Description>${item.description}</cbc:Description>
       <cbc:Name>${item.description}</cbc:Name>
@@ -1136,7 +1162,7 @@ function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): string {
 					<ram:RateApplicablePercent>${item.taxRate}</ram:RateApplicablePercent>
 				</ram:ApplicableTradeTax>
 				<ram:SpecifiedTradeSettlementLineMonetarySummation>
-					<ram:LineTotalAmount>${formatAmount(item.quantity * item.unitPrice)}</ram:LineTotalAmount>
+					<ram:LineTotalAmount>${formatAmount((item.quantity * item.unitPrice) - (item.discountAmount || 0))}</ram:LineTotalAmount>
 				</ram:SpecifiedTradeSettlementLineMonetarySummation>
 			</ram:SpecifiedLineTradeSettlement>
 		</ram:IncludedSupplyChainTradeLineItem>`).join('')}
@@ -1202,7 +1228,7 @@ function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): string {
 					<ram:BICID>${paymentInfo?.bic || options.company.bic || 'COBADEFFXXX'}</ram:BICID>
 				</ram:PayeeSpecifiedCreditorFinancialInstitution>
 			</ram:SpecifiedTradeSettlementPaymentMeans>
-			${Object.entries(calculateTaxBreakdown(invoice.items))
+			${Object.entries(calculateTaxBreakdown(invoice.items, invoice))
 				.filter(([rate]) => Number(rate) > 0)
 				.sort(([rateA], [rateB]) => Number(rateA) - Number(rateB))
 				.map(([rate, breakdown]) => `<ram:ApplicableTradeTax>
@@ -1220,7 +1246,13 @@ function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): string {
 			</ram:SpecifiedTradePaymentTerms>
 			<ram:SpecifiedTradeSettlementHeaderMonetarySummation>
 				<ram:LineTotalAmount>${formatAmount(invoice.subtotal)}</ram:LineTotalAmount>
-				<ram:TaxBasisTotalAmount>${formatAmount(invoice.subtotal)}</ram:TaxBasisTotalAmount>
+				${(() => {
+					const itemDiscountAmount = invoice.items?.reduce((sum, item) => sum + (item.discountAmount || 0), 0) || 0;
+					const globalDiscountAmount = invoice.globalDiscountAmount || 0;
+					const totalDiscountAmount = itemDiscountAmount + globalDiscountAmount;
+					return totalDiscountAmount > 0 ? `<ram:AllowanceTotalAmount>${formatAmount(totalDiscountAmount)}</ram:AllowanceTotalAmount>` : '';
+				})()}
+				<ram:TaxBasisTotalAmount>${formatAmount(invoice.subtotal - (invoice.items?.reduce((sum, item) => sum + (item.discountAmount || 0), 0) || 0) - (invoice.globalDiscountAmount || 0))}</ram:TaxBasisTotalAmount>
 				<ram:TaxTotalAmount currencyID="EUR">${formatAmount(invoice.taxAmount)}</ram:TaxTotalAmount>
 				<ram:GrandTotalAmount>${formatAmount(invoice.total)}</ram:GrandTotalAmount>
 				<ram:DuePayableAmount>${formatAmount(invoice.total)}</ram:DuePayableAmount>

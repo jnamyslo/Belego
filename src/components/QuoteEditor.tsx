@@ -467,7 +467,10 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
       unitPrice: 0,
       taxRate: company.isSmallBusiness ? 0 : 19,
       total: 0,
-      order: order
+      order: order,
+      discountType: undefined,
+      discountValue: undefined,
+      discountAmount: 0
     };
   }
 
@@ -546,7 +549,10 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
           unitPrice: template.unitPrice,
           taxRate: template.taxRate || (company.isSmallBusiness ? 0 : 19),
           total: template.unitPrice,
-          order: newOrder
+          order: newOrder,
+          discountType: undefined,
+          discountValue: undefined,
+          discountAmount: 0
         };
         setItems([...items, newItem]);
       }
@@ -565,7 +571,10 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
           unitPrice: template.rate,
           taxRate: template.taxRate || (company.isSmallBusiness ? 0 : 19),
           total: template.rate,
-          order: newOrder
+          order: newOrder,
+          discountType: undefined,
+          discountValue: undefined,
+          discountAmount: 0
         };
         setItems([...items, newItem]);
       }

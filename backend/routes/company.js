@@ -44,6 +44,7 @@ router.get('/', async (req, res) => {
       jobTrackingEnabled: row.job_tracking_enabled || false,
       reportingEnabled: row.reporting_enabled || false,
       quotesEnabled: row.quotes_enabled || false,
+      discountsEnabled: row.discounts_enabled !== null ? row.discounts_enabled : true,
       defaultPaymentDays: row.default_payment_days !== null ? row.default_payment_days : 30,
       immediatePaymentClause: row.immediate_payment_clause,
       invoiceStartNumber: row.invoice_start_number || 1,
@@ -174,6 +175,10 @@ router.put('/', async (req, res) => {
     if (req.body.quotesEnabled !== undefined) {
       updates.push(`quotes_enabled = $${paramIndex++}`);
       values.push(req.body.quotesEnabled);
+    }
+    if (req.body.discountsEnabled !== undefined) {
+      updates.push(`discounts_enabled = $${paramIndex++}`);
+      values.push(req.body.discountsEnabled);
     }
     if (req.body.defaultPaymentDays !== undefined) {
       updates.push(`default_payment_days = $${paramIndex++}`);
@@ -346,6 +351,7 @@ router.put('/', async (req, res) => {
       jobTrackingEnabled: row.job_tracking_enabled,
       reportingEnabled: row.reporting_enabled,
       quotesEnabled: row.quotes_enabled || false,
+      discountsEnabled: row.discounts_enabled !== null ? row.discounts_enabled : true,
       defaultPaymentDays: row.default_payment_days !== null ? row.default_payment_days : 30,
       immediatePaymentClause: row.immediate_payment_clause,
       invoiceStartNumber: row.invoice_start_number || 1,

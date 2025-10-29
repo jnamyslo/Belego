@@ -53,6 +53,8 @@ function SortableInvoiceItem({
   isLast,
   isSmallBusiness 
 }: SortableInvoiceItemProps) {
+  const { company } = useApp();
+  const discountsEnabled = company.discountsEnabled !== false;
   const {
     attributes,
     listeners,
@@ -75,7 +77,7 @@ function SortableInvoiceItem({
       className={`border border-gray-200 rounded-lg p-3 ${isDragging ? 'shadow-lg' : ''}`}
     >
       {/* Desktop Layout - Single Row */}
-      <div className="hidden lg:grid lg:grid-cols-12 gap-3 items-end">
+      <div className={`hidden lg:grid gap-3 items-end ${discountsEnabled ? 'lg:grid-cols-12' : 'lg:grid-cols-10'}`}>
         {/* Beschreibung - 3 columns */}
         <div className="col-span-3">
           <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -162,43 +164,45 @@ function SortableInvoiceItem({
         </div>
         
         {/* Rabatt - 2 columns */}
-        <div className="col-span-2">
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Rabatt
-          </label>
-          <div className="flex gap-1">
-            <select
-              value={item.discountType || ''}
-              onChange={(e) => {
-                const discountType = e.target.value as 'percentage' | 'fixed' | '';
-                onUpdate(item.id, 'discountType', discountType || undefined);
-                if (!discountType) {
-                  onUpdate(item.id, 'discountValue', undefined);
-                }
-              }}
-              className="w-10 px-1 py-1.5 text-xs border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">-</option>
-              <option value="percentage">%</option>
-              <option value="fixed">€</option>
-            </select>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={item.discountValue || ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === '' || !isNaN(parseFloat(value))) {
-                  onUpdate(item.id, 'discountValue', value === '' ? undefined : parseFloat(value));
-                }
-              }}
-              disabled={!item.discountType}
-              placeholder="0"
-              className="flex-1 px-2 py-1.5 text-sm border border-l-0 border-gray-300 rounded-r focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-            />
+        {discountsEnabled && (
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Rabatt
+            </label>
+            <div className="flex gap-1">
+              <select
+                value={item.discountType || ''}
+                onChange={(e) => {
+                  const discountType = e.target.value as 'percentage' | 'fixed' | '';
+                  onUpdate(item.id, 'discountType', discountType || undefined);
+                  if (!discountType) {
+                    onUpdate(item.id, 'discountValue', undefined);
+                  }
+                }}
+                className="w-10 px-1 py-1.5 text-xs border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">-</option>
+                <option value="percentage">%</option>
+                <option value="fixed">€</option>
+              </select>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={item.discountValue || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || !isNaN(parseFloat(value))) {
+                    onUpdate(item.id, 'discountValue', value === '' ? undefined : parseFloat(value));
+                  }
+                }}
+                disabled={!item.discountType}
+                placeholder="0"
+                className="flex-1 px-2 py-1.5 text-sm border border-l-0 border-gray-300 rounded-r focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+              />
+            </div>
           </div>
-        </div>
+        )}
         
         {/* Zwischensumme - 1.5 columns */}
         <div className="col-span-2">
@@ -336,49 +340,51 @@ function SortableInvoiceItem({
         </div>
         
         {/* Second row: Rabatt, Summe */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Rabatt
-            </label>
-            <div className="flex gap-1">
-              <select
-                value={item.discountType || ''}
-                onChange={(e) => {
-                  const discountType = e.target.value as 'percentage' | 'fixed' | '';
-                  onUpdate(item.id, 'discountType', discountType || undefined);
-                  if (!discountType) {
-                    onUpdate(item.id, 'discountValue', undefined);
-                  }
-                }}
-                className="w-12 px-1 py-1.5 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
-              >
-                <option value="">-</option>
-                <option value="percentage">%</option>
-                <option value="fixed">€</option>
-              </select>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={item.discountValue || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === '' || !isNaN(parseFloat(value))) {
-                    onUpdate(item.id, 'discountValue', value === '' ? undefined : parseFloat(value));
-                  }
-                }}
-                disabled={!item.discountType}
-                placeholder="0"
-                className="flex-1 px-2 py-1.5 border border-l-0 border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 text-xs min-w-0"
-              />
+        <div className={`grid gap-3 ${discountsEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {discountsEnabled && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Rabatt
+              </label>
+              <div className="flex gap-1">
+                <select
+                  value={item.discountType || ''}
+                  onChange={(e) => {
+                    const discountType = e.target.value as 'percentage' | 'fixed' | '';
+                    onUpdate(item.id, 'discountType', discountType || undefined);
+                    if (!discountType) {
+                      onUpdate(item.id, 'discountValue', undefined);
+                    }
+                  }}
+                  className="w-12 px-1 py-1.5 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
+                >
+                  <option value="">-</option>
+                  <option value="percentage">%</option>
+                  <option value="fixed">€</option>
+                </select>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={item.discountValue || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || !isNaN(parseFloat(value))) {
+                      onUpdate(item.id, 'discountValue', value === '' ? undefined : parseFloat(value));
+                    }
+                  }}
+                  disabled={!item.discountType}
+                  placeholder="0"
+                  className="flex-1 px-2 py-1.5 border border-l-0 border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 text-xs min-w-0"
+                />
+              </div>
+              {item.discountType && item.discountValue && (
+                <p className="text-xs text-gray-500 mt-1 break-words">
+                  -{formatDiscountDisplay(item.discountType, item.discountValue, item.discountAmount)}
+                </p>
+              )}
             </div>
-            {item.discountType && item.discountValue && (
-              <p className="text-xs text-gray-500 mt-1 break-words">
-                -{formatDiscountDisplay(item.discountType, item.discountValue, item.discountAmount)}
-              </p>
-            )}
-          </div>
+          )}
           
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -462,8 +468,8 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
     updateInvoice,
     refreshInvoices, 
     addCustomer,
-    refreshCustomers, 
     company,
+    refreshCustomers,
     getInvoiceTemplates,
     addInvoiceTemplate,
     updateInvoiceTemplate,
@@ -475,6 +481,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
     getCombinedHourlyRatesForCustomer,
     getCombinedMaterialTemplatesForCustomer
   } = useApp();
+  const discountsEnabled = company.discountsEnabled !== false;
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [showInvoiceTemplateForm, setShowInvoiceTemplateForm] = useState(false);
   const [showInvoiceTemplateManager, setShowInvoiceTemplateManager] = useState(false);
@@ -1197,7 +1204,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
         </div>
 
         {/* Global Discount Section */}
-        {items.length > 0 && (
+        {items.length > 0 && discountsEnabled && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Gesamtrabatt</h3>
             <div className="grid grid-cols-1 gap-4">
@@ -1283,7 +1290,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
               </div>
               
               {/* Show item discounts if any */}
-              {itemDiscountAmount > 0 && (
+              {discountsEnabled && itemDiscountAmount > 0 && (
                 <div className="flex justify-between text-red-600">
                   <span>Artikelrabatte:</span>
                   <span>-€{itemDiscountAmount.toFixed(2)}</span>
@@ -1291,7 +1298,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
               )}
               
               {/* Show global discount if any */}
-              {globalDiscountAmount > 0 && (
+              {discountsEnabled && globalDiscountAmount > 0 && (
                 <div className="flex justify-between text-red-600">
                   <span>Gesamtrabatt:</span>
                   <span>-€{globalDiscountAmount.toFixed(2)}</span>
@@ -1299,7 +1306,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
               )}
               
               {/* Show subtotal after discounts if discounts exist */}
-              {(itemDiscountAmount > 0 || globalDiscountAmount > 0) && (
+              {discountsEnabled && (itemDiscountAmount > 0 || globalDiscountAmount > 0) && (
                 <div className="flex justify-between border-t pt-2">
                   <span className="text-gray-600">Zwischensumme nach Rabatt:</span>
                   <span className="font-medium">€{discountedSubtotal.toFixed(2)}</span>

@@ -301,6 +301,16 @@ export async function createTables() {
       logger.info('Quotes enabled column already exists or error adding it:', error.message);
     }
 
+    // Add discounts_enabled column if it doesn't exist (for existing databases)
+    try {
+      await client.query(`
+        ALTER TABLE company ADD COLUMN IF NOT EXISTS discounts_enabled BOOLEAN DEFAULT true
+      `);
+    } catch (error) {
+      // Column might already exist, ignore error
+      logger.info('Discounts enabled column already exists or error adding it:', error.message);
+    }
+
     // Quote columns will be added to email_history in migrations after the table is created
 
     // Add icon column if it doesn't exist (for existing databases)

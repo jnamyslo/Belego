@@ -53,6 +53,8 @@ function SortableQuoteItem({
   isLast,
   isSmallBusiness 
 }: SortableQuoteItemProps) {
+  const { company } = useApp();
+  const discountsEnabled = company.discountsEnabled !== false;
   const {
     attributes,
     listeners,
@@ -73,6 +75,15 @@ function SortableQuoteItem({
   const itemTotalBeforeDiscount = item.quantity * item.unitPrice;
   const itemTotalAfterDiscount = itemTotalBeforeDiscount - discountAmount;
 
+  // Calculate grid columns dynamically based on isSmallBusiness and discountsEnabled
+  const getGridCols = () => {
+    if (isSmallBusiness) {
+      return discountsEnabled ? 'lg:grid-cols-10' : 'lg:grid-cols-8';
+    } else {
+      return discountsEnabled ? 'lg:grid-cols-10' : 'lg:grid-cols-9';
+    }
+  };
+
   return (
     <div 
       ref={setNodeRef} 
@@ -80,7 +91,7 @@ function SortableQuoteItem({
       className={`border border-gray-200 rounded-lg p-3 bg-white ${isDragging ? 'shadow-lg ring-2 ring-blue-300' : ''}`}
     >
       {/* Desktop Layout - Single Row */}
-      <div className="hidden lg:grid lg:grid-cols-12 gap-3 items-end">
+      <div className={`hidden lg:grid gap-3 items-end ${getGridCols()}`}>
         {/* Drag Handle */}
         <div className="col-span-1 flex items-center justify-center">
           <button
@@ -160,40 +171,42 @@ function SortableQuoteItem({
         )}
 
         {/* Rabatt Type & Value - Combined */}
-        <div className={isSmallBusiness ? "col-span-2" : "col-span-1"}>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Rabatt
-          </label>
-          <div className="flex gap-1">
-            <select
-              value={item.discountType || ''}
-              onChange={(e) => {
-                const newType = e.target.value as 'percentage' | 'fixed' | '';
-                onUpdate(item.id, 'discountType', newType || undefined);
-                if (!newType) {
-                  onUpdate(item.id, 'discountValue', undefined);
-                }
-              }}
-              className="w-16 px-1 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">-</option>
-              <option value="percentage">%</option>
-              <option value="fixed">€</option>
-            </select>
-            {item.discountType && (
-              <input
-                type="number"
-                min="0"
-                max={item.discountType === 'percentage' ? '100' : undefined}
-                step="0.01"
-                value={item.discountValue || ''}
-                onChange={(e) => onUpdate(item.id, 'discountValue', e.target.value)}
-                className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder={item.discountType === 'percentage' ? '%' : '€'}
-              />
-            )}
+        {discountsEnabled && (
+          <div className={isSmallBusiness ? "col-span-2" : "col-span-1"}>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Rabatt
+            </label>
+            <div className="flex gap-1">
+              <select
+                value={item.discountType || ''}
+                onChange={(e) => {
+                  const newType = e.target.value as 'percentage' | 'fixed' | '';
+                  onUpdate(item.id, 'discountType', newType || undefined);
+                  if (!newType) {
+                    onUpdate(item.id, 'discountValue', undefined);
+                  }
+                }}
+                className="w-16 px-1 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">-</option>
+                <option value="percentage">%</option>
+                <option value="fixed">€</option>
+              </select>
+              {item.discountType && (
+                <input
+                  type="number"
+                  min="0"
+                  max={item.discountType === 'percentage' ? '100' : undefined}
+                  step="0.01"
+                  value={item.discountValue || ''}
+                  onChange={(e) => onUpdate(item.id, 'discountValue', e.target.value)}
+                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder={item.discountType === 'percentage' ? '%' : '€'}
+                />
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Gesamt - 1 column */}
         <div className="col-span-1">
@@ -423,6 +436,7 @@ interface QuoteEditorProps {
 
 export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCustomers, onNavigateToSettings }: QuoteEditorProps) {
   const { customers, company, addQuote, updateQuote, getMaterialTemplatesForCustomer, getHourlyRatesForCustomer, getCombinedMaterialTemplatesForCustomer, getCombinedHourlyRatesForCustomer } = useApp();
+  const discountsEnabled = company.discountsEnabled !== false;
   
   const [quoteNumber, setQuoteNumber] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -1046,11 +1060,12 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
           </div>
 
           {/* Global Discount */}
-          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-4 border border-yellow-200">
-            <div className="flex items-center gap-3 mb-3">
-              <Percent className="w-5 h-5 text-orange-600" />
-              <h3 className="text-sm font-semibold text-gray-900">Gesamtrabatt</h3>
-            </div>
+          {discountsEnabled && (
+            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-4 border border-yellow-200">
+              <div className="flex items-center gap-3 mb-3">
+                <Percent className="w-5 h-5 text-orange-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Gesamtrabatt</h3>
+              </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
@@ -1108,7 +1123,8 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
                 <strong>Hinweis:</strong> Der Gesamtrabatt wird auf die Zwischensumme nach Positionsrabatten angewendet.
               </div>
             )}
-          </div>
+            </div>
+          )}
 
           {/* Totals */}
           <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg p-6 border border-gray-200 space-y-3">
@@ -1117,21 +1133,21 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
               <span className="font-medium text-gray-900">{totals.subtotal.toFixed(2)} €</span>
             </div>
 
-            {totals.itemDiscountAmount > 0 && (
+            {discountsEnabled && totals.itemDiscountAmount > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Positionsrabatte:</span>
                 <span className="font-medium text-red-600">-{totals.itemDiscountAmount.toFixed(2)} €</span>
               </div>
             )}
 
-            {totals.globalDiscountAmount > 0 && (
+            {discountsEnabled && totals.globalDiscountAmount > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Gesamtrabatt:</span>
                 <span className="font-medium text-red-600">-{totals.globalDiscountAmount.toFixed(2)} €</span>
               </div>
             )}
 
-            {(totals.itemDiscountAmount > 0 || totals.globalDiscountAmount > 0) && (
+            {discountsEnabled && (totals.itemDiscountAmount > 0 || totals.globalDiscountAmount > 0) && (
               <div className="flex justify-between text-sm pt-2 border-t border-gray-300">
                 <span className="text-gray-600">Zwischensumme nach Rabatten:</span>
                 <span className="font-medium text-gray-900">{totals.discountedSubtotal.toFixed(2)} €</span>

@@ -145,6 +145,7 @@ export interface Company {
   jobTrackingEnabled?: boolean;
   reportingEnabled?: boolean; // Reporting-Modul aktiviert/deaktiviert
   quotesEnabled?: boolean; // Angebote-Modul aktiviert/deaktiviert
+  discountsEnabled?: boolean; // Rabatt-Funktion aktiviert/deaktiviert (Standard: true)
   defaultPaymentDays?: number; // Standard-Zahlungsziel in Tagen (Standard: 30)
   immediatePaymentClause?: string; // Klausel für sofortige Zahlung (bei 0 Tagen)
   invoiceStartNumber?: number; // Start-Rechnungsnummer (Standard: 1)

@@ -497,6 +497,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
     name: '',
     email: '',
     address: '',
+    addressSupplement: '',
     postalCode: '',
     city: '',
     country: 'Deutschland',
@@ -1439,6 +1440,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
                   name: '',
                   email: '',
                   address: '',
+                  addressSupplement: '',
                   postalCode: '',
                   city: '',
                   country: 'Deutschland',
@@ -1488,6 +1490,18 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
                   value={newCustomerData.address}
                   onChange={(e) => setNewCustomerData({ ...newCustomerData, address: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-custom"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Adresszusatz
+                </label>
+                <input
+                  type="text"
+                  value={newCustomerData.addressSupplement}
+                  onChange={(e) => setNewCustomerData({ ...newCustomerData, addressSupplement: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-custom"
+                  placeholder="z.B. 2. Stock, Hintereingang"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

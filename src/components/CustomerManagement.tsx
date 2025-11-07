@@ -44,6 +44,7 @@ export function CustomerManagement() {
     name: '',
     email: '',
     address: '',
+    addressSupplement: '',
     city: '',
     postalCode: '',
     country: 'Deutschland',
@@ -70,6 +71,7 @@ export function CustomerManagement() {
         name: customer.name,
         email: customer.email,
         address: customer.address,
+        addressSupplement: customer.addressSupplement || '',
         city: customer.city,
         postalCode: customer.postalCode,
         country: customer.country,
@@ -92,6 +94,7 @@ export function CustomerManagement() {
         name: '',
         email: '',
         address: '',
+        addressSupplement: '',
         city: '',
         postalCode: '',
         country: 'Deutschland',
@@ -785,6 +788,18 @@ export function CustomerManagement() {
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Adresszusatz
+                </label>
+                <input
+                  type="text"
+                  value={formData.addressSupplement}
+                  onChange={(e) => setFormData({ ...formData, addressSupplement: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="z.B. 2. Stock, Hintereingang"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -326,6 +326,10 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
     pdf.setTextColor(darkText);
     pdf.text(options.customer.name, 20, currentY);
     currentY += 5; // Reduced from 6 to 5
+    if (options.customer.addressSupplement) {
+      pdf.text(options.customer.addressSupplement, 20, currentY);
+      currentY += 5;
+    }
     pdf.text(options.customer.address, 20, currentY);
     currentY += 5; // Reduced from 6 to 5
     pdf.text(`${options.customer.postalCode} ${options.customer.city}`, 20, currentY);
@@ -992,7 +996,7 @@ function generateXRechnungXML(invoice: Invoice, options: PDFOptions): Promise<Bl
     <cac:Party>
       <cbc:EndpointID schemeID="EM">${options.customer.email}</cbc:EndpointID>
       <cac:PostalAddress>
-        <cbc:StreetName>${options.customer.address}</cbc:StreetName>
+        <cbc:StreetName>${options.customer.address}${options.customer.addressSupplement ? ', ' + options.customer.addressSupplement : ''}</cbc:StreetName>
         <cbc:CityName>${options.customer.city}</cbc:CityName>
         <cbc:PostalZone>${options.customer.postalCode}</cbc:PostalZone>
         <cac:Country>
@@ -1199,7 +1203,7 @@ function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): string {
 				<ram:Name>${escapeXML(options.customer.name)}</ram:Name>
 				<ram:PostalTradeAddress>
 					<ram:PostcodeCode>${options.customer.postalCode}</ram:PostcodeCode>
-					<ram:LineOne>${escapeXML(options.customer.address)}</ram:LineOne>
+					<ram:LineOne>${escapeXML(options.customer.address)}${options.customer.addressSupplement ? ', ' + escapeXML(options.customer.addressSupplement) : ''}</ram:LineOne>
 					<ram:CityName>${escapeXML(options.customer.city)}</ram:CityName>
 					<ram:CountryID>${options.customer.country === 'Deutschland' ? 'DE' : 'DE'}</ram:CountryID>
 				</ram:PostalTradeAddress>
@@ -1540,6 +1544,10 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
     pdf.setTextColor(darkText);
     pdf.text(options.customer.name, margins.left, currentY);
     currentY += 5; // Reduced from 6 to 5
+    if (options.customer.addressSupplement) {
+      pdf.text(options.customer.addressSupplement, margins.left, currentY);
+      currentY += 5;
+    }
     pdf.text(options.customer.address, margins.left, currentY);
     currentY += 5; // Reduced from 6 to 5
     pdf.text(`${options.customer.postalCode} ${options.customer.city}`, margins.left, currentY);
@@ -2337,6 +2345,10 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
     pdf.setTextColor(darkText);
     pdf.text(options.customer.name, 20, currentY);
     currentY += 5; // Reduced from 6 to 5
+    if (options.customer.addressSupplement) {
+      pdf.text(options.customer.addressSupplement, 20, currentY);
+      currentY += 5;
+    }
     pdf.text(options.customer.address, 20, currentY);
     currentY += 5; // Reduced from 6 to 5
     pdf.text(`${options.customer.postalCode} ${options.customer.city}`, 20, currentY);
@@ -2891,6 +2903,10 @@ export async function generateReminderPDF(
     pdf.setTextColor(darkText);
     pdf.text(options.customer.name, 20, currentY);
     currentY += 5; // Reduced from 6 to 5
+    if (options.customer.addressSupplement) {
+      pdf.text(options.customer.addressSupplement, 20, currentY);
+      currentY += 5;
+    }
     pdf.text(options.customer.address, 20, currentY);
     currentY += 5; // Reduced from 6 to 5
     pdf.text(`${options.customer.postalCode} ${options.customer.city}`, 20, currentY);

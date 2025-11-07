@@ -11,6 +11,7 @@ export interface Customer {
   name: string;
   email: string;
   address: string;
+  addressSupplement?: string;
   city: string;
   postalCode: string;
   country: string;

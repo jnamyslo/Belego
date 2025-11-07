@@ -15,6 +15,7 @@ router.get('/', async (req, res) => {
         c.name,
         c.email,
         c.address,
+        c.address_supplement,
         c.city,
         c.postal_code,
         c.country,
@@ -83,7 +84,7 @@ router.get('/', async (req, res) => {
       LEFT JOIN customer_specific_hourly_rates chr ON c.id = chr.customer_id
       LEFT JOIN customer_specific_materials cm ON c.id = cm.customer_id
       GROUP BY 
-        c.id, c.customer_number, c.name, c.email, c.address, c.city, 
+        c.id, c.customer_number, c.name, c.email, c.address, c.address_supplement, c.city, 
         c.postal_code, c.country, c.tax_id, c.phone, c.created_at
       ORDER BY c.created_at DESC
     `);
@@ -94,6 +95,7 @@ router.get('/', async (req, res) => {
       name: row.name,
       email: row.email,
       address: row.address,
+      addressSupplement: row.address_supplement,
       city: row.city,
       postalCode: row.postal_code,
       country: row.country,
@@ -137,6 +139,7 @@ router.get('/:id', async (req, res) => {
         c.name,
         c.email,
         c.address,
+        c.address_supplement,
         c.city,
         c.postal_code,
         c.country,
@@ -208,7 +211,7 @@ router.get('/:id', async (req, res) => {
       LEFT JOIN customer_specific_materials cm ON c.id = cm.customer_id
       WHERE c.id = $1
       GROUP BY 
-        c.id, c.customer_number, c.name, c.email, c.address, c.city, 
+        c.id, c.customer_number, c.name, c.email, c.address, c.address_supplement, c.city, 
         c.postal_code, c.country, c.tax_id, c.phone, c.created_at
     `, [id]);
     
@@ -223,6 +226,7 @@ router.get('/:id', async (req, res) => {
       name: row.name,
       email: row.email,
       address: row.address,
+      addressSupplement: row.address_supplement,
       city: row.city,
       postalCode: row.postal_code,
       country: row.country,
@@ -285,7 +289,7 @@ router.get('/:id', async (req, res) => {
 // Create new customer
 router.post('/', async (req, res) => {
   try {
-    const { name, email, address, city, postalCode, country, taxId, phone } = req.body;
+    const { name, email, address, addressSupplement, city, postalCode, country, taxId, phone } = req.body;
 
     // Generate customer number - find highest existing number and increment
     // Always format as 4-digit number with leading zeros (e.g., 0001, 0002, etc.)
@@ -305,10 +309,10 @@ router.post('/', async (req, res) => {
     }
 
     const result = await query(`
-      INSERT INTO customers (customer_number, name, email, address, city, postal_code, country, tax_id, phone)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO customers (customer_number, name, email, address, address_supplement, city, postal_code, country, tax_id, phone)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
-    `, [customerNumber, name, email || null, address, city, postalCode, country, taxId, phone]);
+    `, [customerNumber, name, email || null, address, addressSupplement || null, city, postalCode, country, taxId, phone]);
 
     const row = result.rows[0];
     const customer = {
@@ -317,6 +321,7 @@ router.post('/', async (req, res) => {
       name: row.name,
       email: row.email,
       address: row.address,
+      addressSupplement: row.address_supplement,
       city: row.city,
       postalCode: row.postal_code,
       country: row.country,
@@ -342,15 +347,15 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, address, city, postalCode, country, taxId, phone } = req.body;
+    const { name, email, address, addressSupplement, city, postalCode, country, taxId, phone } = req.body;
 
     const result = await query(`
       UPDATE customers 
-      SET name = $1, email = $2, address = $3, city = $4, postal_code = $5, 
-          country = $6, tax_id = $7, phone = $8
-      WHERE id = $9
+      SET name = $1, email = $2, address = $3, address_supplement = $4, city = $5, postal_code = $6, 
+          country = $7, tax_id = $8, phone = $9
+      WHERE id = $10
       RETURNING *
-    `, [name, email || null, address, city, postalCode, country, taxId, phone, id]);
+    `, [name, email || null, address, addressSupplement || null, city, postalCode, country, taxId, phone, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Customer not found' });
@@ -363,6 +368,7 @@ router.put('/:id', async (req, res) => {
       name: row.name,
       email: row.email,
       address: row.address,
+      addressSupplement: row.address_supplement,
       city: row.city,
       postalCode: row.postal_code,
       country: row.country,

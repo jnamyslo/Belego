@@ -1294,6 +1294,26 @@ Wir fordern Sie hiermit letztmalig auf, den Betrag unverzüglich, spätestens je
       logger.info('Migration completed: ' + migration15Name);
     }
 
+    // Migration 16: Add address_supplement column to customers table
+    const migration16Name = 'add_address_supplement_to_customers';
+    const migration16Exists = await client.query('SELECT 1 FROM migrations WHERE name = $1', [migration16Name]);
+    
+    if (migration16Exists.rows.length === 0) {
+      logger.info('Running migration: ' + migration16Name);
+      
+      // Add address_supplement column to customers table
+      await client.query(`
+        ALTER TABLE customers 
+        ADD COLUMN IF NOT EXISTS address_supplement TEXT
+      `);
+      
+      logger.info('Successfully added address_supplement column to customers table');
+      
+      // Record the migration
+      await client.query('INSERT INTO migrations (name, executed_at) VALUES ($1, NOW())', [migration16Name]);
+      logger.info('Migration completed: ' + migration16Name);
+    }
+
   } catch (error) {
     logger.error('Error running migrations', { error: error.message, stack: error.stack });
     throw error;

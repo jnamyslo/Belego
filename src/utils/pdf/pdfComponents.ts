@@ -1,0 +1,354 @@
+/**
+ * Shared PDF components for reuse across different PDF generators
+ */
+
+import jsPDF from 'jspdf';
+import { Company, Customer } from '../../types';
+import { ColorConfiguration } from './colorUtils';
+import { loadImage } from './imageHelpers';
+import logger from '../logger';
+
+export interface PageMargins {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+export interface PDFContext {
+  pdf: jsPDF;
+  pageWidth: number;
+  pageHeight: number;
+  margins: PageMargins;
+  colors: ColorConfiguration;
+  company: Company;
+  customer: Customer;
+  locale: string;
+}
+
+/**
+ * Reset PDF font to default state
+ */
+export function resetFont(pdf: jsPDF, darkText: string): void {
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(9);
+  pdf.setTextColor(darkText);
+}
+
+/**
+ * Add complete header to PDF page
+ * Returns the Y position after the header
+ */
+export async function addPDFHeader(
+  context: PDFContext,
+  metadataBox: { title: string; fields: Array<{ label: string; value: string }> },
+  customerAddress?: string
+): Promise<number> {
+  const { pdf, pageWidth, margins, colors, company, customer } = context;
+  const { primaryRgb, grayText, darkText } = colors;
+  
+  let currentY = margins.top;
+  
+  // Invoice metadata box (right side) - positioned first to avoid overlaps
+  const metadataBoxX = pageWidth - 80;
+  const metadataBoxY = currentY;
+  const metadataBoxWidth = 60;
+  // Calculate height dynamically: title (12) + spacing (8) + fields * 10 + padding (10)
+  const metadataBoxHeight = 30 + (metadataBox.fields.length * 10);
+  
+  // Draw metadata box (only fill, no border)
+  pdf.setFillColor(248, 250, 252);
+  pdf.rect(metadataBoxX, metadataBoxY, metadataBoxWidth, metadataBoxHeight, 'F');
+  
+  // Metadata box title
+  pdf.setFontSize(14);
+  pdf.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
+  pdf.text(metadataBox.title, metadataBoxX + 3, metadataBoxY + 12);
+  
+  let metadataY = metadataBoxY + 20;
+  
+  // Metadata fields
+  pdf.setFontSize(8);
+  pdf.setTextColor(grayText);
+  for (const field of metadataBox.fields) {
+    pdf.text(field.label, metadataBoxX + 3, metadataY);
+    pdf.setTextColor(darkText);
+    pdf.text(field.value, metadataBoxX + 3, metadataY + 4);
+    metadataY += 10;
+    pdf.setTextColor(grayText);
+  }
+  
+  // Company logo or name on the left
+  if (company.logo) {
+    try {
+      // Add timeout and error handling for logo loading
+      const logoImg = await Promise.race([
+        loadImage(company.logo),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Logo loading timeout')), 5000)
+        )
+      ]);
+      
+      // Dynamic logo sizing and positioning calculation (same as original)
+      const maxLogoHeight = metadataBoxHeight * 0.8; // 80% of metadata box height for padding
+      const maxLogoWidth = 100; // Available width between left margin and line end (100 units)
+      const aspectRatio = logoImg.width / logoImg.height;
+      
+      let logoWidth, logoHeight;
+      
+      // Determine size based on aspect ratio and constraints
+      if (aspectRatio > maxLogoWidth / maxLogoHeight) {
+        // Width is the limiting factor
+        logoWidth = maxLogoWidth;
+        logoHeight = maxLogoWidth / aspectRatio;
+      } else {
+        // Height is the limiting factor
+        logoHeight = maxLogoHeight;
+        logoWidth = maxLogoHeight * aspectRatio;
+      }
+      
+      // Calculate dynamic positioning
+      // X: Center the logo within the available space (0 to 100 units where line ends)
+      const availableLogoSpaceWidth = 100; // Width until the line under company data
+      const logoStartX = 20 + (availableLogoSpaceWidth - logoWidth) / 2;
+      
+      // Y: Center the logo vertically within the metadata box
+      const logoStartY = metadataBoxY + (metadataBoxHeight - logoHeight) / 2;
+      
+      // Determine image format for jsPDF
+      let imageFormat = 'JPEG';
+      if (company.logo.toLowerCase().includes('png') || company.logo.includes('data:image/png')) {
+        imageFormat = 'PNG';
+      }
+      
+      pdf.addImage(company.logo, imageFormat, logoStartX, logoStartY, logoWidth, logoHeight);
+      
+    } catch (error) {
+      logger.warn('Logo konnte nicht geladen werden:', { error: String(error) });
+      // Fallback: Company name as header - center vertically in metadata box
+      const fallbackTextY = metadataBoxY + (metadataBoxHeight / 2) + 3; // +3 for better text baseline alignment
+      pdf.setFontSize(16);
+      pdf.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
+      pdf.text(company.name, 20, fallbackTextY);
+    }
+  } else {
+    // Company name as header without logo - center vertically in metadata box  
+    const fallbackTextY = metadataBoxY + (metadataBoxHeight / 2) + 3; // +3 for better text baseline alignment
+    pdf.setFontSize(16);
+    pdf.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
+    pdf.text(company.name, 20, fallbackTextY);
+  }
+  
+  // Move Y position down after header section
+  currentY = metadataBoxY + metadataBoxHeight + 10;
+  
+  // Sender address line (German standard)
+  pdf.setFontSize(7);
+  pdf.setTextColor(grayText);
+  
+  if (company.companyHeaderTwoLine) {
+    // Two-line layout
+    const line1 = company.companyHeaderLine1 || company.name;
+    const line2 = company.companyHeaderLine2 || 
+      `${company.name}, ${company.address}, ${company.postalCode} ${company.city}`;
+    
+    pdf.text(line1, margins.left, currentY);
+    currentY += 3;
+    pdf.text(line2, margins.left, currentY);
+    currentY += 2;
+  } else {
+    // Traditional single-line layout
+    pdf.text(`${company.name}, ${company.address}, ${company.postalCode} ${company.city}`, margins.left, currentY);
+    currentY += 2;
+  }
+  
+  // Line under sender address
+  pdf.setDrawColor(200, 200, 200);
+  pdf.line(margins.left, currentY, 120, currentY);
+  
+  currentY += 6;
+  
+  // Customer address block (left side)
+  const customerAddressY = currentY;
+  pdf.setFontSize(11);
+  pdf.setTextColor(darkText);
+  pdf.text(customer.name, margins.left, currentY);
+  currentY += 5;
+  if (customer.addressSupplement) {
+    pdf.text(customer.addressSupplement, margins.left, currentY);
+    currentY += 5;
+  }
+  pdf.text(customer.address, margins.left, currentY);
+  currentY += 5;
+  pdf.text(`${customer.postalCode} ${customer.city}`, margins.left, currentY);
+  if (customer.country && customer.country !== 'Deutschland') {
+    currentY += 5;
+    pdf.text(customer.country, margins.left, currentY);
+  }
+  
+  // Add execution/customer address if provided
+  if (customerAddress && customerAddress.trim()) {
+    currentY += 6;
+    pdf.setFontSize(9);
+    pdf.setTextColor(grayText);
+    pdf.text('Ausführungsort:', margins.left, currentY);
+    currentY += 4;
+    pdf.setFontSize(10);
+    pdf.setTextColor(darkText);
+    
+    const addressLines = customerAddress.split('\n').filter(line => line.trim());
+    for (const line of addressLines) {
+      pdf.text(line.trim(), margins.left, currentY);
+      currentY += 4;
+    }
+  }
+  
+  // Customer details (right side)
+  let customerDetailsY = customerAddressY;
+  pdf.setFontSize(9);
+  pdf.setTextColor(grayText);
+  
+  const customerMetadataX = pageWidth - 80;
+  
+  if (customer.customerNumber) {
+    pdf.text('Kunden-Nr.:', customerMetadataX, customerDetailsY);
+    pdf.setTextColor(darkText);
+    pdf.text(customer.customerNumber, customerMetadataX, customerDetailsY + 4);
+    customerDetailsY += 10;
+  }
+  
+  if (customer.phone) {
+    pdf.setTextColor(grayText);
+    pdf.text('Telefon:', customerMetadataX, customerDetailsY);
+    pdf.setTextColor(darkText);
+    pdf.text(customer.phone, customerMetadataX, customerDetailsY + 4);
+    customerDetailsY += 10;
+  }
+  
+  /**if (customer.email) {
+    pdf.setTextColor(grayText);
+    pdf.text('E-Mail:', customerMetadataX, customerDetailsY);
+    pdf.setTextColor(darkText);
+    pdf.text(customer.email, customerMetadataX, customerDetailsY + 4);
+    customerDetailsY += 10;
+  }*/
+  
+  if (customer.taxId) {
+    pdf.setTextColor(grayText);
+    pdf.text('USt-IdNr.:', customerMetadataX, customerDetailsY);
+    pdf.setTextColor(darkText);
+    pdf.text(customer.taxId, customerMetadataX, customerDetailsY + 4);
+  }
+  
+  // Ensure currentY accounts for customer address section
+  currentY += 18;
+  
+  return currentY;
+}
+
+/**
+ * Add footer to PDF page
+ */
+export function addPDFFooter(
+  context: PDFContext,
+  pageNum: number,
+  totalPages?: number
+): void {
+  const { pdf, pageWidth, pageHeight, margins, colors, company } = context;
+  const { grayText } = colors;
+  
+  const footerY = pageHeight - margins.bottom;
+  
+  // Footer separator line
+  pdf.setDrawColor(203, 213, 225);
+  pdf.setLineWidth(0.5);
+  pdf.line(margins.left, footerY - 8, pageWidth - margins.right, footerY - 8);
+  
+  pdf.setFontSize(8);
+  pdf.setTextColor(grayText);
+  
+  // Company info in footer
+  const footerInfo = `${company.name} | ${company.address} | ${company.postalCode} ${company.city}`;
+  pdf.text(footerInfo, margins.left, footerY - 4);
+  
+  // Build tax information string
+  let taxInfo = '';
+  if (company.taxId) {
+    taxInfo += `USt-IdNr: ${company.taxId}`;
+  }
+  if (company.taxIdentificationNumber) {
+    if (taxInfo) taxInfo += ' | ';
+    taxInfo += `Steuer-ID: ${company.taxIdentificationNumber}`;
+  }
+  
+  const footerContact = `Tel: ${company.phone} | E-Mail: ${company.email}${taxInfo ? ' | ' + taxInfo : ''}`;
+  pdf.text(footerContact, margins.left, footerY);
+  
+  // Page number if multiple pages
+  if (totalPages && totalPages > 1) {
+    pdf.text(`Seite ${pageNum} von ${totalPages}`, pageWidth - margins.right - 30, footerY + 8);
+  } else if (!totalPages) {
+    // Single page number without total
+    pdf.text(`Seite ${pageNum}`, pageWidth - margins.right - 20, footerY + 8);
+  }
+}
+
+/**
+ * Draw table header
+ */
+export function drawTableHeader(
+  pdf: jsPDF,
+  yPosition: number,
+  pageWidth: number,
+  _colors: ColorConfiguration,
+  columns: Array<{ label: string; x: number }>,
+  darkText: string
+): number {
+  // Table header background
+  pdf.setFillColor(240, 243, 248);
+  pdf.rect(20, yPosition - 2, pageWidth - 40, 12, 'F');
+  
+  // Table border
+  pdf.setDrawColor(203, 213, 225);
+  pdf.setLineWidth(0.5);
+  pdf.rect(20, yPosition - 2, pageWidth - 40, 12);
+  
+  pdf.setFontSize(9);
+  pdf.setTextColor(darkText);
+  pdf.setFont('helvetica', 'bold');
+  
+  // Column headers
+  for (const col of columns) {
+    pdf.text(col.label, col.x, yPosition + 5);
+  }
+  
+  return yPosition + 15;
+}
+
+/**
+ * Check if page break is needed and add new page if necessary
+ * Returns true if a new page was added
+ */
+export async function checkPageBreak(
+  context: PDFContext,
+  currentY: number,
+  requiredSpace: number,
+  minimumSpace: number = 30,
+  onNewPage?: () => Promise<number>
+): Promise<{ needsBreak: boolean; newY: number }> {
+  const availableSpace = context.pageHeight - context.margins.bottom - currentY;
+  
+  if (availableSpace < Math.max(requiredSpace, minimumSpace)) {
+    context.pdf.addPage();
+    
+    let newY = context.margins.top;
+    if (onNewPage) {
+      newY = await onNewPage();
+    }
+    
+    return { needsBreak: true, newY };
+  }
+  
+  return { needsBreak: false, newY: currentY };
+}
+

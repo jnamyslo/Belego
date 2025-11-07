@@ -95,6 +95,14 @@ function calculateTaxBreakdown(items: Invoice['items'], invoice?: Partial<Invoic
   return taxBreakdown;
 }
 
+// Helper function to check if any discounts exist in items
+function checkHasDiscounts(items: Invoice['items']): boolean {
+  return items.some(item => 
+    (item.discountAmount && item.discountAmount > 0) || 
+    (item.discountValue && item.discountValue > 0)
+  );
+}
+
 // Helper function to check if invoice has only 0% tax rate
 function hasOnlyZeroTaxRate(items: Invoice['items']): boolean {
   return items.length > 0 && items.every(item => item.taxRate === 0);
@@ -395,6 +403,9 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
   
   // Items table with professional styling
   
+  // Check if discounts should be displayed
+  const showDiscounts = options.company.discountsEnabled !== false && checkHasDiscounts(invoice.items);
+  
   // Table header with better styling
   pdf.setFillColor(240, 243, 248);
   pdf.rect(20, yPosition - 2, pageWidth - 40, 12, 'F');
@@ -408,14 +419,20 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
   pdf.setTextColor(darkText);
   pdf.setFont('helvetica', 'bold');
   
-  // Column headers with German labels
+  // Column headers with German labels - dynamic based on discount visibility
   pdf.text('Pos.', 25, yPosition + 5);
   pdf.text('Beschreibung', 40, yPosition + 5);
   pdf.text('Menge', 95, yPosition + 5);
-  pdf.text('Einzelpreis', 115, yPosition + 5);
-  pdf.text('Rabatt', 135, yPosition + 5);
-  pdf.text('MwSt.', 155, yPosition + 5);
-  pdf.text('Gesamt', 170, yPosition + 5);
+  if (showDiscounts) {
+    pdf.text('Einzelpreis', 115, yPosition + 5);
+    pdf.text('Rabatt', 135, yPosition + 5);
+    pdf.text('MwSt.', 155, yPosition + 5);
+    pdf.text('Gesamt', 170, yPosition + 5);
+  } else {
+    pdf.text('Einzelpreis', 120, yPosition + 5);
+    pdf.text('MwSt.', 150, yPosition + 5);
+    pdf.text('Gesamt', 170, yPosition + 5);
+  }
   
   yPosition += 15;
   
@@ -457,10 +474,16 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
       pdf.text('Pos.', 25, yPosition + 5);
       pdf.text('Beschreibung', 40, yPosition + 5);
       pdf.text('Menge', 95, yPosition + 5);
-      pdf.text('Einzelpreis', 115, yPosition + 5);
-      pdf.text('Rabatt', 135, yPosition + 5);
-      pdf.text('MwSt.', 155, yPosition + 5);
-      pdf.text('Gesamt', 170, yPosition + 5);
+      if (showDiscounts) {
+        pdf.text('Einzelpreis', 115, yPosition + 5);
+        pdf.text('Rabatt', 135, yPosition + 5);
+        pdf.text('MwSt.', 155, yPosition + 5);
+        pdf.text('Gesamt', 170, yPosition + 5);
+      } else {
+        pdf.text('Einzelpreis', 120, yPosition + 5);
+        pdf.text('MwSt.', 150, yPosition + 5);
+        pdf.text('Gesamt', 170, yPosition + 5);
+      }
       
       yPosition += 15;
       pdf.setFont('helvetica', 'normal');
@@ -478,21 +501,25 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
     pdf.text(splitDesc[0], 40, yPosition);
     
     pdf.text(item.quantity.toString(), 95, yPosition);
-    pdf.text(formatCurrency(item.unitPrice, locale), 115, yPosition);
     
-    // Rabatt anzeigen
+    // Rabatt anzeigen wenn aktiviert
     const discountAmount = item.discountAmount || 0;
-    if (discountAmount > 0) {
-      if (item.discountType === 'percentage') {
-        pdf.text(`${item.discountValue}%`, 135, yPosition);
+    if (showDiscounts) {
+      pdf.text(formatCurrency(item.unitPrice, locale), 115, yPosition);
+      if (discountAmount > 0) {
+        if (item.discountType === 'percentage') {
+          pdf.text(`${item.discountValue}%`, 135, yPosition);
+        } else {
+          pdf.text(formatCurrency(item.discountValue || 0, locale), 135, yPosition);
+        }
       } else {
-        pdf.text(formatCurrency(item.discountValue || 0, locale), 135, yPosition);
+        pdf.text('-', 135, yPosition);
       }
+      pdf.text(`${item.taxRate}%`, 155, yPosition);
     } else {
-      pdf.text('-', 135, yPosition);
+      pdf.text(formatCurrency(item.unitPrice, locale), 120, yPosition);
+      pdf.text(`${item.taxRate}%`, 150, yPosition);
     }
-    
-    pdf.text(`${item.taxRate}%`, 155, yPosition);
     
     // Gesamtpreis nach Rabatt
     const itemTotal = (item.quantity * item.unitPrice) - discountAmount;
@@ -2449,6 +2476,9 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
   
   // Items table with professional styling
   
+  // Check if discounts should be displayed
+  const showDiscounts = options.company.discountsEnabled !== false && checkHasDiscounts(quote.items);
+  
   // Table header with better styling
   pdf.setFillColor(240, 243, 248);
   pdf.rect(20, yPosition - 2, pageWidth - 40, 12, 'F');
@@ -2462,14 +2492,20 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
   pdf.setTextColor(darkText);
   pdf.setFont('helvetica', 'bold');
   
-  // Column headers with German labels
+  // Column headers with German labels - dynamic based on discount visibility
   pdf.text('Pos.', 25, yPosition + 5);
   pdf.text('Beschreibung', 40, yPosition + 5);
   pdf.text('Menge', 95, yPosition + 5);
-  pdf.text('Einzelpreis', 115, yPosition + 5);
-  pdf.text('Rabatt', 135, yPosition + 5);
-  pdf.text('MwSt.', 155, yPosition + 5);
-  pdf.text('Gesamt', 170, yPosition + 5);
+  if (showDiscounts) {
+    pdf.text('Einzelpreis', 115, yPosition + 5);
+    pdf.text('Rabatt', 135, yPosition + 5);
+    pdf.text('MwSt.', 155, yPosition + 5);
+    pdf.text('Gesamt', 170, yPosition + 5);
+  } else {
+    pdf.text('Einzelpreis', 120, yPosition + 5);
+    pdf.text('MwSt.', 150, yPosition + 5);
+    pdf.text('Gesamt', 170, yPosition + 5);
+  }
   
   yPosition += 15;
   
@@ -2506,10 +2542,16 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
       pdf.text('Pos.', 25, yPosition + 5);
       pdf.text('Beschreibung', 40, yPosition + 5);
       pdf.text('Menge', 95, yPosition + 5);
-      pdf.text('Einzelpreis', 115, yPosition + 5);
-      pdf.text('Rabatt', 135, yPosition + 5);
-      pdf.text('MwSt.', 155, yPosition + 5);
-      pdf.text('Gesamt', 170, yPosition + 5);
+      if (showDiscounts) {
+        pdf.text('Einzelpreis', 115, yPosition + 5);
+        pdf.text('Rabatt', 135, yPosition + 5);
+        pdf.text('MwSt.', 155, yPosition + 5);
+        pdf.text('Gesamt', 170, yPosition + 5);
+      } else {
+        pdf.text('Einzelpreis', 120, yPosition + 5);
+        pdf.text('MwSt.', 150, yPosition + 5);
+        pdf.text('Gesamt', 170, yPosition + 5);
+      }
       
       yPosition += 15;
       pdf.setFont('helvetica', 'normal');
@@ -2527,21 +2569,25 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
     pdf.text(splitDesc[0], 40, yPosition);
     
     pdf.text(item.quantity.toString(), 95, yPosition);
-    pdf.text(formatCurrency(item.unitPrice, locale), 115, yPosition);
     
-    // Rabatt anzeigen
+    // Rabatt anzeigen wenn aktiviert
     const discountAmount = item.discountAmount || 0;
-    if (discountAmount > 0) {
-      if (item.discountType === 'percentage') {
-        pdf.text(`${item.discountValue}%`, 135, yPosition);
+    if (showDiscounts) {
+      pdf.text(formatCurrency(item.unitPrice, locale), 115, yPosition);
+      if (discountAmount > 0) {
+        if (item.discountType === 'percentage') {
+          pdf.text(`${item.discountValue}%`, 135, yPosition);
+        } else {
+          pdf.text(formatCurrency(item.discountValue || 0, locale), 135, yPosition);
+        }
       } else {
-        pdf.text(formatCurrency(item.discountValue || 0, locale), 135, yPosition);
+        pdf.text('-', 135, yPosition);
       }
+      pdf.text(`${item.taxRate}%`, 155, yPosition);
     } else {
-      pdf.text('-', 135, yPosition);
+      pdf.text(formatCurrency(item.unitPrice, locale), 120, yPosition);
+      pdf.text(`${item.taxRate}%`, 150, yPosition);
     }
-    
-    pdf.text(`${item.taxRate}%`, 155, yPosition);
     
     // Gesamtpreis nach Rabatt
     const itemTotal = (item.quantity * item.unitPrice) - discountAmount;

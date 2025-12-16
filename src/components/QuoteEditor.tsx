@@ -600,11 +600,44 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
   const updateItem = (id: string, field: keyof QuoteItem, value: string | number | undefined) => {
     setItems(items.map(item => {
       if (item.id === id) {
-        const updatedItem = { ...item, [field]: value };
+        let parsedValue: string | number | undefined = value;
         
-        // Recalculate with discount when relevant fields change
+        // Convert numeric fields to numbers
+        if (['quantity', 'unitPrice', 'taxRate', 'discountValue'].includes(field)) {
+          if (value === undefined || value === '' || value === null) {
+            parsedValue = field === 'discountValue' ? undefined : 0;
+          } else {
+            parsedValue = parseFloat(String(value));
+            if (isNaN(parsedValue)) {
+              parsedValue = 0;
+            }
+          }
+        }
+        
+        const updatedItem = { ...item, [field]: parsedValue };
+        
+        // Recalculate total and discount when relevant fields change
         if (['quantity', 'unitPrice', 'discountType', 'discountValue'].includes(field)) {
-          return updateItemWithDiscount(updatedItem as any) as QuoteItem;
+          // Calculate discount amount
+          const quantity = updatedItem.quantity || 0;
+          const unitPrice = updatedItem.unitPrice || 0;
+          const itemTotal = quantity * unitPrice;
+          
+          let discountAmount = 0;
+          if (updatedItem.discountType && updatedItem.discountValue && updatedItem.discountValue > 0) {
+            if (updatedItem.discountType === 'percentage') {
+              const percentage = Math.min(Math.max(updatedItem.discountValue, 0), 100);
+              discountAmount = (itemTotal * percentage) / 100;
+            } else if (updatedItem.discountType === 'fixed') {
+              discountAmount = Math.min(Math.max(updatedItem.discountValue, 0), itemTotal);
+            }
+          }
+          
+          return {
+            ...updatedItem,
+            discountAmount,
+            total: itemTotal - discountAmount
+          };
         }
         
         return updatedItem;

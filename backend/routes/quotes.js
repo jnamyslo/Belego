@@ -101,7 +101,10 @@ router.get('/:id', async (req, res) => {
                    'unitPrice', unit_price,
                    'taxRate', tax_rate,
                    'total', total,
-                   'order', item_order
+                   'order', item_order,
+                   'discountType', discount_type,
+                   'discountValue', discount_value,
+                   'discountAmount', discount_amount
                  ) ORDER BY item_order
                ) as items
         FROM quote_items
@@ -146,6 +149,9 @@ router.get('/:id', async (req, res) => {
       total: parseFloat(row.total),
       status: row.status,
       notes: row.notes,
+      globalDiscountType: row.global_discount_type,
+      globalDiscountValue: row.global_discount_value ? parseFloat(row.global_discount_value) : null,
+      globalDiscountAmount: row.global_discount_amount ? parseFloat(row.global_discount_amount) : null,
       createdAt: row.created_at
     };
 
@@ -213,29 +219,93 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Calculate totals
+    // Calculate totals with discount support
     let subtotal = 0;
-    let taxAmount = 0;
+    let totalItemDiscounts = 0;
+    
+    // Group items by tax rate for proper tax calculation
+    const taxBreakdown = {};
     
     const processedItems = items.map(item => {
       const itemTotal = item.quantity * item.unitPrice;
-      const itemTax = itemTotal * (item.taxRate / 100);
+      const itemDiscount = item.discountAmount || 0;
+      const discountedItemTotal = itemTotal - itemDiscount;
+      const taxRate = item.taxRate || 0;
+      
       subtotal += itemTotal;
-      taxAmount += itemTax;
+      totalItemDiscounts += itemDiscount;
+      
+      // Group by tax rate for later tax calculation
+      if (!taxBreakdown[taxRate]) {
+        taxBreakdown[taxRate] = { taxableAmount: 0, taxAmount: 0 };
+      }
+      taxBreakdown[taxRate].taxableAmount += discountedItemTotal;
+      
       return {
         ...item,
-        total: itemTotal + itemTax
+        total: discountedItemTotal // Store without tax for now
       };
     });
 
-    const total = subtotal + taxAmount;
+    // Calculate subtotal after item discounts
+    const subtotalAfterItemDiscounts = subtotal - totalItemDiscounts;
 
-    // Insert quote
+    // Apply global discount
+    let globalDiscountApplied = 0;
+    
+    if (globalDiscountType && globalDiscountValue) {
+      if (globalDiscountType === 'percentage') {
+        globalDiscountApplied = (subtotalAfterItemDiscounts * globalDiscountValue) / 100;
+      } else if (globalDiscountType === 'fixed') {
+        globalDiscountApplied = Math.min(globalDiscountValue, subtotalAfterItemDiscounts);
+      }
+    }
+    
+    // Use provided globalDiscountAmount if available, otherwise use calculated
+    const finalGlobalDiscountAmount = globalDiscountAmount !== null ? globalDiscountAmount : globalDiscountApplied;
+
+    // Calculate final subtotal after all discounts
+    const discountedSubtotal = subtotalAfterItemDiscounts - finalGlobalDiscountAmount;
+
+    // Recalculate taxes based on global discount
+    // The global discount is proportionally distributed across all tax rates
+    let taxAmount = 0;
+    
+    if (finalGlobalDiscountAmount > 0 && subtotalAfterItemDiscounts > 0) {
+      // Proportional distribution of global discount
+      const discountRatio = finalGlobalDiscountAmount / subtotalAfterItemDiscounts;
+      
+      Object.keys(taxBreakdown).forEach(taxRateStr => {
+        const taxRate = Number(taxRateStr);
+        const breakdown = taxBreakdown[taxRate];
+        
+        // Reduce taxable amount proportionally
+        const reducedTaxableAmount = breakdown.taxableAmount * (1 - discountRatio);
+        const reducedTaxAmount = (reducedTaxableAmount * taxRate) / 100;
+        
+        breakdown.taxableAmount = reducedTaxableAmount;
+        breakdown.taxAmount = reducedTaxAmount;
+        taxAmount += reducedTaxAmount;
+      });
+    } else {
+      // No global discount, calculate tax normally
+      Object.keys(taxBreakdown).forEach(taxRateStr => {
+        const taxRate = Number(taxRateStr);
+        const breakdown = taxBreakdown[taxRate];
+        const itemTaxAmount = (breakdown.taxableAmount * taxRate) / 100;
+        breakdown.taxAmount = itemTaxAmount;
+        taxAmount += itemTaxAmount;
+      });
+    }
+    
+    const total = discountedSubtotal + taxAmount;
+
+    // Insert quote - use subtotalAfterItemDiscounts as the stored subtotal
     const quoteResult = await client.query(`
       INSERT INTO quotes (quote_number, customer_id, customer_name, issue_date, valid_until, subtotal, tax_amount, total, status, notes, global_discount_type, global_discount_value, global_discount_amount)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
-    `, [quoteNumber, customerId, customerName, issueDate, validUntil, subtotal, taxAmount, total, status, notes, globalDiscountType, globalDiscountValue, globalDiscountAmount]);
+    `, [quoteNumber, customerId, customerName, issueDate, validUntil, subtotalAfterItemDiscounts, taxAmount, total, status, notes, globalDiscountType, globalDiscountValue, finalGlobalDiscountAmount]);
 
     const quoteId = quoteResult.rows[0].id;
 
@@ -275,7 +345,10 @@ router.post('/', async (req, res) => {
                    'unitPrice', unit_price,
                    'taxRate', tax_rate,
                    'total', total,
-                   'order', item_order
+                   'order', item_order,
+                   'discountType', discount_type,
+                   'discountValue', discount_value,
+                   'discountAmount', discount_amount
                  ) ORDER BY item_order
                ) as items
         FROM quote_items
@@ -316,6 +389,9 @@ router.post('/', async (req, res) => {
       total: parseFloat(row.total),
       status: row.status,
       notes: row.notes,
+      globalDiscountType: row.global_discount_type,
+      globalDiscountValue: row.global_discount_value ? parseFloat(row.global_discount_value) : null,
+      globalDiscountAmount: row.global_discount_amount ? parseFloat(row.global_discount_amount) : null,
       createdAt: row.created_at
     };
 
@@ -447,7 +523,10 @@ router.put('/:id', async (req, res) => {
                    'unitPrice', unit_price,
                    'taxRate', tax_rate,
                    'total', total,
-                   'order', item_order
+                   'order', item_order,
+                   'discountType', discount_type,
+                   'discountValue', discount_value,
+                   'discountAmount', discount_amount
                  ) ORDER BY item_order
                ) as items
         FROM quote_items
@@ -488,6 +567,9 @@ router.put('/:id', async (req, res) => {
       total: parseFloat(row.total),
       status: row.status,
       notes: row.notes,
+      globalDiscountType: row.global_discount_type,
+      globalDiscountValue: row.global_discount_value ? parseFloat(row.global_discount_value) : null,
+      globalDiscountAmount: row.global_discount_amount ? parseFloat(row.global_discount_amount) : null,
       createdAt: row.created_at
     };
 

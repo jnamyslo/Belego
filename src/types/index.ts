@@ -1,12 +1,28 @@
+// ============================================================================
+// Base Types
+// ============================================================================
+
+export type UUID = string;
+export type ISODateString = string;
+
+export interface Timestamps {
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+// ============================================================================
+// Customer Types
+// ============================================================================
+
 export interface CustomerEmail {
-  id: string;
+  id: UUID;
   email: string;
   label?: string;
   isActive: boolean;
 }
 
-export interface Customer {
-  id: string;
+export interface Customer extends Timestamps {
+  id: UUID;
   customerNumber: string;
   name: string;
   email: string;
@@ -18,40 +34,55 @@ export interface Customer {
   taxId?: string;
   phone?: string;
   additionalEmails?: CustomerEmail[];
-  hourlyRates?: HourlyRate[]; // Customer-specific hourly rates
-  materials?: MaterialTemplate[]; // Customer-specific materials
-  createdAt: Date;
+  hourlyRates?: HourlyRate[];
+  materials?: MaterialTemplate[];
 }
 
-export interface InvoiceItem {
-  id: string;
+// ============================================================================
+// Invoice Types
+// ============================================================================
+
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'reminded_1x' | 'reminded_2x' | 'reminded_3x';
+
+export type DiscountType = 'percentage' | 'fixed';
+
+export interface Discount {
+  discountType?: DiscountType;
+  discountValue?: number;
+  discountAmount?: number;
+}
+
+export interface InvoiceItem extends Discount {
+  id: UUID;
   description: string;
   quantity: number;
   unitPrice: number;
   taxRate: number;
   total: number;
-  jobNumber?: string; // Verknüpfte Auftragsnummer
-  externalJobNumber?: string; // Externe Auftragsnummer
-  order: number; // Sortierreihenfolge der Position
-  // Rabattfelder
-  discountType?: 'percentage' | 'fixed'; // Rabatttyp: Prozentual oder Festbetrag
-  discountValue?: number; // Rabattwert (Prozent oder Betrag)
-  discountAmount?: number; // Berechneter Rabattbetrag
+  jobNumber?: string;
+  externalJobNumber?: string;
+  order: number;
 }
 
 export interface InvoiceAttachment {
-  id: string;
+  id: UUID;
   name: string;
-  content: string; // Base64 encoded content
+  content: string; // Base64 encoded
   contentType: string;
   size: number;
   uploadedAt: Date;
 }
 
-export interface Invoice {
-  id: string;
+export interface GlobalDiscount {
+  globalDiscountType?: DiscountType;
+  globalDiscountValue?: number;
+  globalDiscountAmount?: number;
+}
+
+export interface Invoice extends Timestamps, GlobalDiscount {
+  id: UUID;
   invoiceNumber: string;
-  customerId: string;
+  customerId: UUID;
   customerName: string;
   issueDate: Date;
   dueDate: Date;
@@ -59,75 +90,173 @@ export interface Invoice {
   subtotal: number;
   taxAmount: number;
   total: number;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'reminded_1x' | 'reminded_2x' | 'reminded_3x';
+  status: InvoiceStatus;
   notes?: string;
   attachments?: InvoiceAttachment[];
-  createdAt: Date;
   // Reminder fields
   lastReminderDate?: Date;
   lastReminderSentAt?: Date;
-  maxReminderStage?: number; // Highest reminder stage reached (0-3), persists even after payment
-  // Gesamtrabatt-Felder
-  globalDiscountType?: 'percentage' | 'fixed'; // Gesamtrabatttyp: Prozentual oder Festbetrag
-  globalDiscountValue?: number; // Gesamtrabattwert (Prozent oder Betrag)
-  globalDiscountAmount?: number; // Berechneter Gesamtrabattbetrag
+  maxReminderStage?: number;
 }
 
-export interface QuoteItem {
-  id: string;
+// ============================================================================
+// Quote Types
+// ============================================================================
+
+export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'billed';
+
+export interface QuoteItem extends Discount {
+  id: UUID;
   description: string;
   quantity: number;
   unitPrice: number;
   taxRate: number;
   total: number;
-  order: number; // Sortierreihenfolge der Position
-  // Rabattfelder
-  discountType?: 'percentage' | 'fixed'; // Rabatttyp: Prozentual oder Festbetrag
-  discountValue?: number; // Rabattwert (Prozent oder Betrag)
-  discountAmount?: number; // Berechneter Rabattbetrag
+  order: number;
 }
 
 export interface QuoteAttachment {
-  id: string;
+  id: UUID;
   name: string;
-  content: string; // Base64 encoded content
+  content: string; // Base64 encoded
   contentType: string;
   size: number;
   uploadedAt: Date;
 }
 
-export interface Quote {
-  id: string;
+export interface Quote extends Timestamps, GlobalDiscount {
+  id: UUID;
   quoteNumber: string;
-  customerId: string;
+  customerId: UUID;
   customerName: string;
   issueDate: Date;
-  validUntil: Date; // Gültigkeitsdatum statt Fälligkeitsdatum
+  validUntil: Date;
   items: QuoteItem[];
   subtotal: number;
   taxAmount: number;
   total: number;
-  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'billed';
+  status: QuoteStatus;
   notes?: string;
   attachments?: QuoteAttachment[];
-  createdAt: Date;
-  convertedToInvoiceId?: string; // Verknüpfung zur erstellten Rechnung
-  // Gesamtrabatt-Felder
-  globalDiscountType?: 'percentage' | 'fixed';
-  globalDiscountValue?: number;
-  globalDiscountAmount?: number;
+  convertedToInvoiceId?: UUID;
 }
+
+// ============================================================================
+// Job Types
+// ============================================================================
+
+export type JobStatus = 'draft' | 'in-progress' | 'completed' | 'invoiced';
+export type JobPriority = 'low' | 'medium' | 'high';
+
+export interface JobAttachment {
+  id: UUID;
+  name: string;
+  content: string; // Base64 encoded
+  contentType: string;
+  size: number;
+  uploadedAt: Date;
+}
+
+export interface JobSignature {
+  id: UUID;
+  customerName: string;
+  signatureData: string; // Base64 encoded signature image
+  signedAt: Date;
+  ipAddress?: string;
+}
+
+export interface JobMaterial extends Discount {
+  id: UUID;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  taxRate: number;
+  total: number;
+  unit?: string;
+  templateId?: UUID;
+}
+
+export interface JobTimeEntry extends Discount {
+  id: UUID;
+  description: string;
+  startTime?: string;
+  endTime?: string;
+  hoursWorked: number;
+  hourlyRate: number;
+  hourlyRateId?: UUID;
+  taxRate: number;
+  total: number;
+}
+
+export interface JobEntry extends Timestamps {
+  id: UUID;
+  jobNumber: string;
+  externalJobNumber?: string;
+  customerId: UUID;
+  customerName: string;
+  customerAddress?: string;
+  title: string;
+  description: string;
+  date: Date;
+  startTime?: string;
+  endTime?: string;
+  hoursWorked: number;
+  hourlyRate: number;
+  hourlyRateId?: UUID;
+  timeEntries?: JobTimeEntry[];
+  materials?: JobMaterial[];
+  status: JobStatus;
+  notes?: string;
+  attachments?: JobAttachment[];
+  signature?: JobSignature;
+  tags?: string[];
+  priority?: JobPriority;
+  estimatedHours?: number;
+  actualHours?: number;
+  location?: string;
+}
+
+export interface JobInvoiceGeneration {
+  type: 'single' | 'daily' | 'weekly' | 'monthly';
+  jobIds: UUID[];
+  date?: Date;
+  customerId: UUID;
+}
+
+// ============================================================================
+// Company Types
+// ============================================================================
+
+export type Locale = 'de-DE' | 'en-US' | 'fr-FR' | 'es-ES';
 
 export interface PaymentInformation {
-  accountHolder?: string; // Kontoinhaber (kann unterschiedlich zur Firma sein)
+  accountHolder?: string;
   bankAccount?: string; // IBAN
   bic?: string;
-  bankName?: string; // Name der Bank
-  paymentTerms?: string; // Zusätzliche Zahlungsbedingungen
-  paymentMethods?: string[]; // Unterstützte Zahlungsmethoden (Überweisung, PayPal, etc.)
+  bankName?: string;
+  paymentTerms?: string;
+  paymentMethods?: string[];
 }
 
-export interface Company {
+export interface ReminderSettings {
+  remindersEnabled?: boolean;
+  reminderDaysAfterDue?: number;
+  reminderDaysBetween?: number;
+  reminderFeeStage1?: number;
+  reminderFeeStage2?: number;
+  reminderFeeStage3?: number;
+  reminderTextStage1?: string;
+  reminderTextStage2?: string;
+  reminderTextStage3?: string;
+}
+
+export interface CompanyHeader {
+  companyHeaderTwoLine?: boolean;
+  companyHeaderLine1?: string;
+  companyHeaderLine2?: string;
+}
+
+export interface Company extends ReminderSettings, CompanyHeader {
   name: string;
   address: string;
   city: string;
@@ -136,72 +265,63 @@ export interface Company {
   phone: string;
   email: string;
   website?: string;
-  taxId: string; // USt-IdNr. (Umsatzsteuer-Identifikationsnummer)
+  taxId: string; // USt-IdNr.
   taxIdentificationNumber?: string; // Steuernummer
   logo?: string | null;
   icon?: string | null;
-  locale?: 'de-DE' | 'en-US' | 'fr-FR' | 'es-ES';
+  locale?: Locale;
   primaryColor?: string;
   secondaryColor?: string;
+  // Feature flags
   jobTrackingEnabled?: boolean;
-  reportingEnabled?: boolean; // Reporting-Modul aktiviert/deaktiviert
-  quotesEnabled?: boolean; // Angebote-Modul aktiviert/deaktiviert
-  discountsEnabled?: boolean; // Rabatt-Funktion aktiviert/deaktiviert (Standard: true)
-  defaultPaymentDays?: number; // Standard-Zahlungsziel in Tagen (Standard: 30)
-  immediatePaymentClause?: string; // Klausel für sofortige Zahlung (bei 0 Tagen)
-  invoiceStartNumber?: number; // Start-Rechnungsnummer (Standard: 1)
-  isSmallBusiness?: boolean; // Kleinunternehmerregelung nach § 19 UStG
-  // Reminder settings
-  remindersEnabled?: boolean; // Zahlungserinnerungen aktiviert/deaktiviert
-  reminderDaysAfterDue?: number; // Tage nach Fälligkeit bis zur ersten Mahnung
-  reminderDaysBetween?: number; // Tage zwischen Mahnstufen
-  reminderFeeStage1?: number; // Mahngebühr Stufe 1
-  reminderFeeStage2?: number; // Mahngebühr Stufe 2
-  reminderFeeStage3?: number; // Mahngebühr Stufe 3
-  reminderTextStage1?: string; // Mahntext Stufe 1
-  reminderTextStage2?: string; // Mahntext Stufe 2
-  reminderTextStage3?: string; // Mahntext Stufe 3
-  // Layout-Optionen
-  companyHeaderTwoLine?: boolean; // Zweizeilige Darstellung der Firmeninformationen
-  companyHeaderLine1?: string; // Erste Zeile (z.B. "BeBa montage-service Industrievertretung")
-  companyHeaderLine2?: string; // Zweite Zeile (z.B. "Jörg Badekow, Saseler Kamp 78, 22393 Hamburg")
+  reportingEnabled?: boolean;
+  quotesEnabled?: boolean;
+  discountsEnabled?: boolean;
+  showCombinedDropdowns?: boolean;
+  isSmallBusiness?: boolean;
+  // Payment settings
+  defaultPaymentDays?: number;
+  immediatePaymentClause?: string;
+  invoiceStartNumber?: number;
+  paymentInformation?: PaymentInformation;
+  // Templates
   hourlyRates?: HourlyRate[];
   materialTemplates?: MaterialTemplate[];
   invoiceTemplates?: InvoiceTemplate[];
-  // Getrennte Zahlungsinformationen
-  paymentInformation?: PaymentInformation;
-  // Dropdown-Einstellungen
-  showCombinedDropdowns?: boolean; // Zeigt allgemeine + kundenspezifische Daten in Dropdowns
-  // Legacy-Felder für Rückwärtskompatibilität (deprecated)
+  // Legacy fields (deprecated)
   bankAccount?: string;
   bic?: string;
 }
 
+// ============================================================================
+// Template Types
+// ============================================================================
+
 export interface HourlyRate {
-  id: string;
+  id: UUID;
   name: string;
   description?: string;
   rate: number;
-  taxRate?: number; // Default tax rate for this hourly rate
+  taxRate?: number;
   isDefault?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export interface MaterialTemplate {
-  id: string;
+  id: UUID;
   name: string;
   description?: string;
   unitPrice: number;
   unit: string;
-  taxRate?: number; // Default tax rate for this material template
+  taxRate?: number;
   isDefault?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export interface InvoiceTemplate {
-  id: string;
+  id: UUID;
   name: string;
   description?: string;
   unitPrice: number;
@@ -220,96 +340,18 @@ export interface YearlyInvoiceStartNumber {
   updated_at: string;
 }
 
-export interface JobAttachment {
-  id: string;
-  name: string;
-  content: string; // Base64 encoded content
-  contentType: string;
-  size: number;
-  uploadedAt: Date;
-}
-
-export interface JobSignature {
-  id: string;
-  customerName: string; // Free text input for customer name
-  signatureData: string; // Base64 encoded signature image
-  signedAt: Date;
-  ipAddress?: string;
-}
-
-export interface JobEntry {
-  id: string;
-  jobNumber: string; // Automatisch generierte Auftragsnummer (AB-2025-001)
-  externalJobNumber?: string; // Optionale externe Auftragsnummer
-  customerId: string;
-  customerName: string;
-  customerAddress?: string; // Zusätzliche Kundenanschrift für Ausführungsort
-  title: string;
-  description: string;
-  date: Date;
-  startTime?: string;
-  endTime?: string;
-  hoursWorked: number;
-  hourlyRate: number;
-  hourlyRateId?: string; // Reference to HourlyRate
-  timeEntries?: JobTimeEntry[]; // New: Multiple time entries per job
-  materials?: JobMaterial[];
-  status: 'draft' | 'in-progress' | 'completed' | 'invoiced';
-  notes?: string;
-  attachments?: JobAttachment[];
-  signature?: JobSignature; // Customer signature
-  createdAt: Date;
-  updatedAt: Date;
-  tags?: string[];
-  priority?: 'low' | 'medium' | 'high';
-  estimatedHours?: number;
-  actualHours?: number;
-  location?: string;
-}
-
-export interface JobMaterial {
-  id: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  taxRate: number;
-  total: number;
-  unit?: string;
-  templateId?: string; // Reference to MaterialTemplate
-  // Rabattfelder für Materialien
-  discountType?: 'percentage' | 'fixed'; // Rabatttyp: Prozentual oder Festbetrag
-  discountValue?: number; // Rabattwert (Prozent oder Betrag)
-  discountAmount?: number; // Berechneter Rabattbetrag
-}
-
-export interface JobTimeEntry {
-  id: string;
-  description: string;
-  startTime?: string;
-  endTime?: string;
-  hoursWorked: number;
-  hourlyRate: number;
-  hourlyRateId?: string; // Reference to HourlyRate
-  taxRate: number;
-  total: number;
-  // Rabattfelder für Zeiteinträge
-  discountType?: 'percentage' | 'fixed'; // Rabatttyp: Prozentual oder Festbetrag
-  discountValue?: number; // Rabattwert (Prozent oder Betrag)
-  discountAmount?: number; // Berechneter Rabattbetrag
-}
-
-export interface JobInvoiceGeneration {
-  type: 'single' | 'daily' | 'weekly' | 'monthly';
-  jobIds: string[];
-  date?: Date; // For daily/weekly/monthly grouping
-  customerId: string;
-}
+// ============================================================================
+// Export Types
+// ============================================================================
 
 export type ExportFormat = 'zugferd' | 'xrechnung';
 
+// ============================================================================
 // Reporting Types
+// ============================================================================
+
 export interface InvoiceJournalEntry {
-  id: string;
+  id: UUID;
   invoiceNumber: string;
   customerName: string;
   customerNumber?: string;
@@ -355,7 +397,7 @@ export interface MonthlyRevenueStats {
 }
 
 export interface CustomerStats {
-  customerId: string;
+  customerId: UUID;
   customerName: string;
   invoiceCount: number;
   totalRevenue: number;
@@ -386,18 +428,47 @@ export interface ReportingStatistics {
   yearOverview: YearOverview | null;
 }
 
+// ============================================================================
 // Reminder Types
+// ============================================================================
+
+export type ReminderStage = 1 | 2 | 3;
+
 export interface ReminderEligibility {
-  invoiceId: string;
+  invoiceId: UUID;
   invoiceNumber: string;
-  customerId: string;
+  customerId: UUID;
   customerName: string;
   dueDate: Date;
   total: number;
-  currentStatus: Invoice['status'];
-  nextStage: 1 | 2 | 3;
+  currentStatus: InvoiceStatus;
+  nextStage: ReminderStage;
   daysSinceDue: number;
   daysSinceLastReminder?: number;
   isEligible: boolean;
   nextEligibleDate?: Date;
 }
+
+// ============================================================================
+// Utility Types
+// ============================================================================
+
+/**
+ * Make some properties optional
+ */
+export type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+/**
+ * Make some properties required
+ */
+export type RequiredBy<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>;
+
+/**
+ * Create input type for new entities (without id and timestamps)
+ */
+export type CreateInput<T> = Omit<T, 'id' | 'createdAt' | 'updatedAt'>;
+
+/**
+ * Create update input type (all fields optional except id)
+ */
+export type UpdateInput<T> = Partial<Omit<T, 'id'>> & { id: UUID };

@@ -151,8 +151,10 @@ export function CustomerManagement() {
     const existingCustomer = findDuplicateCustomer(customers, formData, editingCustomer?.id);
     
     if (existingCustomer) {
-      showDuplicateCustomerAlert(existingCustomer);
-      return;
+      const shouldContinue = showDuplicateCustomerAlert(existingCustomer);
+      if (!shouldContinue) {
+        return; // Nur abbrechen wenn der Benutzer "Abbrechen" wählt
+      }
     }
     
     try {

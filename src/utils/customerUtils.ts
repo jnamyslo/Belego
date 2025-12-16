@@ -1,16 +1,36 @@
 import { Customer } from '../types';
 
-export function findDuplicateCustomer(customers: Customer[], newCustomer: { name: string; email: string }, excludeId?: string): Customer | null {
-  return customers.find(existing => 
-    existing.id !== excludeId && ( // Exclude the current customer being edited
-      existing.name.toLowerCase() === newCustomer.name.toLowerCase() ||
-      (newCustomer.email && existing.email && existing.email.toLowerCase() === newCustomer.email.toLowerCase())
-    )
-  ) || null;
+export function findDuplicateCustomer(
+  customers: Customer[], 
+  newCustomer: { name: string; email: string; address: string; postalCode: string; city: string }, 
+  excludeId?: string
+): Customer | null {
+  return customers.find(existing => {
+    // Exclude the current customer being edited
+    if (existing.id === excludeId) return false;
+    
+    // 1. Name muss gleich sein
+    const nameMatches = existing.name.toLowerCase() === newCustomer.name.toLowerCase();
+    if (!nameMatches) return false;
+    
+    // 2. Adresse muss gleich sein (address + PLZ + Stadt)
+    const addressMatches = 
+      existing.address.toLowerCase() === newCustomer.address.toLowerCase() &&
+      existing.postalCode.toLowerCase() === newCustomer.postalCode.toLowerCase() &&
+      existing.city.toLowerCase() === newCustomer.city.toLowerCase();
+    if (!addressMatches) return false;
+    
+    // 3. E-Mail muss gleich sein (leere E-Mails gelten als gleich)
+    const existingEmail = (existing.email || '').toLowerCase();
+    const newEmail = (newCustomer.email || '').toLowerCase();
+    const emailMatches = existingEmail === newEmail;
+    
+    return emailMatches;
+  }) || null;
 }
 
 export function showDuplicateCustomerAlert(duplicateCustomer: Customer): boolean {
-  const message = `Ein Kunde mit ähnlichen Daten existiert bereits:\n\nName: ${duplicateCustomer.name}\nE-Mail: ${duplicateCustomer.email || 'Nicht angegeben'}\nKunden-Nr: ${formatCustomerNumber(duplicateCustomer.customerNumber)}\n\nMöchten Sie trotzdem fortfahren?`;
+  const message = `Ein Kunde mit identischen Daten existiert bereits:\n\nName: ${duplicateCustomer.name}\nAdresse: ${duplicateCustomer.address}, ${duplicateCustomer.postalCode} ${duplicateCustomer.city}\nE-Mail: ${duplicateCustomer.email || 'Nicht angegeben'}\nKunden-Nr: ${formatCustomerNumber(duplicateCustomer.customerNumber)}\n\nMöchten Sie trotzdem fortfahren?`;
   return window.confirm(message);
 }
 

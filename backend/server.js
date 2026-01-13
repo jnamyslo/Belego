@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { createTables, pool } from './database.js';
+import { createTables, pool, checkHealth } from './database.js';
 import logger from './utils/logger.js';
 import customersRouter from './routes/customers.js';
 import invoicesRouter from './routes/invoices.js';
@@ -28,8 +28,29 @@ app.use(express.json({ limit: '100mb' })); // Increase limit for PDF attachments
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
+app.get('/health', async (req, res) => {
+  const dbHealth = await checkHealth();
+  
+  if (dbHealth.healthy) {
+    res.json({ 
+      status: 'OK', 
+      message: 'Server is running',
+      database: {
+        status: 'connected',
+        poolStats: dbHealth.poolStats,
+      },
+    });
+  } else {
+    res.status(503).json({ 
+      status: 'DEGRADED', 
+      message: 'Server is running but database connection failed',
+      database: {
+        status: 'disconnected',
+        error: dbHealth.error,
+        poolStats: dbHealth.poolStats,
+      },
+    });
+  }
 });
 
 // API routes
@@ -72,6 +93,12 @@ async function startServer() {
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
   logger.info('Shutting down server...');
+  await pool.end();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  logger.info('Shutting down server (SIGTERM)...');
   await pool.end();
   process.exit(0);
 });

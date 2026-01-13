@@ -63,10 +63,72 @@ export const pool = new Pool({
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  max: 20, // Maximum number of clients in the pool
+  min: 2, // Minimum number of clients in the pool (keeps connections alive)
+  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+  // Set statement timeout via connection options (in milliseconds, converted to PostgreSQL format)
+  options: `-c statement_timeout=30000`, // 30 seconds timeout for queries
+  keepAlive: true, // Enable TCP keep-alive
+  keepAliveInitialDelayMillis: 10000, // Start keep-alive after 10 seconds of inactivity
 });
+
+// ============================================================================
+// Pool Event Handlers for Monitoring and Error Handling
+// ============================================================================
+
+// Handle pool errors (critical for long-running containers)
+pool.on('error', (err, client) => {
+  logger.error('Unexpected error on idle database client', {
+    error: err.message,
+    stack: err.stack,
+    clientProcessId: client?.processID,
+  });
+  // Don't exit the process, but log the error for monitoring
+});
+
+// Log when a client is acquired from the pool
+pool.on('connect', (client) => {
+  logger.debug('Database client connected', {
+    processId: client.processID,
+    totalCount: pool.totalCount,
+    idleCount: pool.idleCount,
+    waitingCount: pool.waitingCount,
+  });
+});
+
+// Log when a client is removed from the pool
+pool.on('remove', (client) => {
+  logger.debug('Database client removed from pool', {
+    processId: client.processID,
+    totalCount: pool.totalCount,
+    idleCount: pool.idleCount,
+  });
+});
+
+// Log pool statistics periodically (every 5 minutes)
+let poolStatsInterval;
+if (process.env.NODE_ENV === 'production') {
+  poolStatsInterval = setInterval(() => {
+    logger.info('Database pool statistics', {
+      totalCount: pool.totalCount,
+      idleCount: pool.idleCount,
+      waitingCount: pool.waitingCount,
+    });
+  }, 5 * 60 * 1000); // Every 5 minutes
+
+  // Clean up interval on shutdown
+  process.on('SIGINT', () => {
+    if (poolStatsInterval) {
+      clearInterval(poolStatsInterval);
+    }
+  });
+  process.on('SIGTERM', () => {
+    if (poolStatsInterval) {
+      clearInterval(poolStatsInterval);
+    }
+  });
+}
 
 // ============================================================================
 // Database Initialization
@@ -192,18 +254,83 @@ Wir fordern Sie hiermit letztmalig auf, den Betrag unverzüglich, spätestens je
 // ============================================================================
 
 /**
- * Execute a database query
+ * Execute a database query with timeout protection
  * @param {string} text - SQL query text
  * @param {any[]} params - Query parameters
+ * @param {number} timeoutMs - Optional timeout in milliseconds (default: 30000)
  * @returns {Promise<import('pg').QueryResult>}
  */
-export async function query(text, params) {
+export async function query(text, params, timeoutMs = 30000) {
   const client = await pool.connect();
+  const startTime = Date.now();
+  
   try {
+    // Set statement timeout for this specific query
+    await client.query(`SET statement_timeout = ${timeoutMs}`);
+    
     const result = await client.query(text, params);
+    
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      // Log slow queries (> 1 second)
+      logger.warn('Slow database query detected', {
+        duration: `${duration}ms`,
+        query: text.substring(0, 200),
+      });
+    }
+    
     return result;
+  } catch (error) {
+    // Log query errors for debugging
+    logger.error('Database query error', {
+      error: error.message,
+      code: error.code,
+      duration: `${Date.now() - startTime}ms`,
+      query: text.substring(0, 200), // Log first 200 chars of query
+    });
+    throw error;
   } finally {
+    // Reset statement timeout to default
+    try {
+      await client.query('RESET statement_timeout');
+    } catch (resetError) {
+      // Ignore reset errors, connection might be broken
+      logger.debug('Could not reset statement_timeout', { error: resetError.message });
+    }
     client.release();
+  }
+}
+
+/**
+ * Check database connection health
+ * @returns {Promise<{healthy: boolean, poolStats?: object, error?: string}>}
+ */
+export async function checkHealth() {
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('SELECT 1');
+      return {
+        healthy: true,
+        poolStats: {
+          totalCount: pool.totalCount,
+          idleCount: pool.idleCount,
+          waitingCount: pool.waitingCount,
+        },
+      };
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    return {
+      healthy: false,
+      error: error.message,
+      poolStats: {
+        totalCount: pool.totalCount,
+        idleCount: pool.idleCount,
+        waitingCount: pool.waitingCount,
+      },
+    };
   }
 }
 
@@ -211,4 +338,5 @@ export default {
   pool,
   createTables,
   query,
+  checkHealth,
 };

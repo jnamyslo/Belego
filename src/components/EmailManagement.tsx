@@ -80,6 +80,12 @@ interface EmailManagementProps {
 }
 
 export function EmailManagement({ onClose }: EmailManagementProps) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const [activeTab, setActiveTab] = useState<'history' | 'settings' | 'test' | 'statistics'>('history');
   
   // Email History State
@@ -320,7 +326,7 @@ export function EmailManagement({ onClose }: EmailManagementProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
@@ -417,7 +423,7 @@ export function EmailManagement({ onClose }: EmailManagementProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
           {/* Email History Tab */}
           {activeTab === 'history' && (
             <div className="h-full flex flex-col">
@@ -559,7 +565,7 @@ export function EmailManagement({ onClose }: EmailManagementProps) {
 
           {/* Statistics Tab */}
           {activeTab === 'statistics' && (
-            <div className="p-6 h-full overflow-y-auto">
+            <div className="p-6">
               {isLoadingStats ? (
                 <div className="flex items-center justify-center h-64">
                   <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
@@ -645,7 +651,7 @@ export function EmailManagement({ onClose }: EmailManagementProps) {
 
           {/* SMTP Settings Tab */}
           {activeTab === 'settings' && (
-            <div className="p-6 h-full overflow-y-auto">
+            <div className="p-6">
               <div className="max-w-2xl mx-auto space-y-6">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-start">
@@ -824,7 +830,7 @@ export function EmailManagement({ onClose }: EmailManagementProps) {
 
           {/* Test Email Tab */}
           {activeTab === 'test' && (
-            <div className="p-6 h-full overflow-y-auto">
+            <div className="p-6">
               <div className="max-w-2xl mx-auto space-y-6">
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <div className="flex items-start">

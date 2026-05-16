@@ -3,7 +3,7 @@
  * Generates ZUGFeRD 2.1 compliant XML based on EN 16931 standard
  */
 
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, AFRelationship } from 'pdf-lib';
 import { Invoice } from '../../types';
 import { PDFOptions } from '../pdfGenerator';
 import logger from '../logger';
@@ -196,45 +196,23 @@ export async function embedZUGFeRDXMLIntoPDF(pdfBuffer: ArrayBuffer, invoice: In
       throw new Error('Generated ZUGFeRD XML is empty');
     }
     
-    // Set PDF/A-3 compliance metadata
+    const xmlBytes = new TextEncoder().encode(xmlData);
+    
     pdfDoc.setTitle(`Rechnung ${invoice.invoiceNumber}`);
-    pdfDoc.setSubject('ZUGFeRD invoice');
+    pdfDoc.setSubject(`ZUGFeRD invoice ${invoice.invoiceNumber}`);
     pdfDoc.setKeywords(['ZUGFeRD', 'invoice', 'electronic invoice', 'EN 16931']);
     pdfDoc.setProducer('Belego');
     pdfDoc.setCreator('Belego');
     pdfDoc.setCreationDate(new Date());
     pdfDoc.setModificationDate(new Date());
     
-    const xmlBytes = new TextEncoder().encode(xmlData);
-    
-    // Try to attach XML file to PDF
-    let attachmentSuccess = false;
-    const possibleMethods = ['attachFile', 'embedFile', 'attach', 'addAttachment'];
-    
-    for (const method of possibleMethods) {
-      if (typeof (pdfDoc as any)[method] === 'function') {
-        try {
-          await (pdfDoc as any)[method]('zugferd-invoice.xml', xmlBytes, {
-            mimeType: 'application/xml',
-            description: 'ZUGFeRD invoice data',
-            creationDate: new Date(),
-            modificationDate: new Date()
-          });
-          
-          logger.info(`Successfully embedded ZUGFeRD XML using method: ${method}`);
-          attachmentSuccess = true;
-          break;
-        } catch (error: any) {
-          logger.warn(`Method ${method} failed:`, error.message);
-        }
-      }
-    }
-    
-    if (!attachmentSuccess) {
-      logger.warn('No suitable attachment method found in pdf-lib, storing XML in metadata');
-      pdfDoc.setSubject('ZUGFeRD invoice - XML data in metadata');
-      pdfDoc.setKeywords(['ZUGFeRD', 'invoice', 'electronic invoice', 'EN 16931', 'xml-metadata']);
-    }
+    await pdfDoc.attach(xmlBytes, 'ZUGFeRD-invoice.xml', {
+      mimeType: 'application/xml',
+      description: 'ZUGFeRD invoice data',
+      creationDate: new Date(),
+      modificationDate: new Date(),
+      afRelationship: AFRelationship.Alternative,
+    });
     
     const pdfBytes = await pdfDoc.save({
       useObjectStreams: false,

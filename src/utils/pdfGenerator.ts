@@ -173,7 +173,7 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
     }
     
     const splitDesc = pdf.splitTextToSize(description, 52);
-    const totalRowHeight = 10 + (splitDesc.length - 1) * 8;
+    const totalRowHeight = splitDesc.length * 4.5 + 5.5;
     
     // Check for page break
     if (await handlePageBreak(totalRowHeight + 5)) {
@@ -188,6 +188,7 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
       pdf.rect(20, yPosition - 3, pageWidth - 40, totalRowHeight, 'F');
     }
     
+    yPosition += 1.5;
     pdf.setTextColor(darkText);
     pdf.text((index + 1).toString(), 25, yPosition);
     pdf.text(splitDesc[0], 40, yPosition);
@@ -214,15 +215,15 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
     const itemTotal = (item.quantity * item.unitPrice) - discountAmount;
     pdf.text(formatCurrency(itemTotal, locale), 170, yPosition);
     
-    yPosition += 10;
+    yPosition += 4.5;
     
     // Additional description lines
-    if (splitDesc.length > 1) {
-      for (let i = 1; i < splitDesc.length; i++) {
-        pdf.text(splitDesc[i], 40, yPosition);
-        yPosition += 8;
-      }
+    for (let i = 1; i < splitDesc.length; i++) {
+      pdf.text(splitDesc[i], 40, yPosition);
+      yPosition += 4.5;
     }
+    
+    yPosition += 4.0;
   }
   
   // Table bottom border
@@ -592,7 +593,7 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
   for (const entry of timeEntries) {
     const desc = entry.description || 'Arbeitsleistung';
     const splitDesc = pdf.splitTextToSize(desc, 52);
-    const rowHeight = 10 + (splitDesc.length - 1) * 8;
+    const rowHeight = splitDesc.length * 4.5 + 5.5;
     
     if (await handlePageBreak(rowHeight + 5)) {
       yPosition = drawTableHeader(pdf, yPosition, pageWidth, colors, tableColumns, darkText);
@@ -603,6 +604,7 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
       pdf.rect(20, yPosition - 3, pageWidth - 40, rowHeight, 'F');
     }
     
+    yPosition += 1.5;
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
     pdf.setTextColor(darkText);
@@ -618,14 +620,14 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
     const entryTotal = entry.hoursWorked * entry.hourlyRate;
     pdf.text(formatCurrency(entryTotal, locale), 170, yPosition);
     
-    yPosition += 10;
+    yPosition += 4.5;
     
-    if (splitDesc.length > 1) {
-      for (let i = 1; i < splitDesc.length; i++) {
-        pdf.text(splitDesc[i], 40, yPosition);
-        yPosition += 8;
-      }
+    for (let i = 1; i < splitDesc.length; i++) {
+      pdf.text(splitDesc[i], 40, yPosition);
+      yPosition += 4.5;
     }
+    
+    yPosition += 4.0;
     
     positionIndex++;
   }
@@ -634,7 +636,7 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
   if (job.materials && job.materials.length > 0) {
     for (const material of job.materials) {
       const splitDesc = pdf.splitTextToSize(material.description, 52);
-      const rowHeight = 10 + (splitDesc.length - 1) * 8;
+      const rowHeight = splitDesc.length * 4.5 + 5.5;
       
       if (await handlePageBreak(rowHeight + 5)) {
         yPosition = drawTableHeader(pdf, yPosition, pageWidth, colors, tableColumns, darkText);
@@ -660,14 +662,14 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
       const materialTotal = material.quantity * material.unitPrice;
       pdf.text(formatCurrency(materialTotal, locale), 170, yPosition);
       
-      yPosition += 10;
+      yPosition += 4.5;
       
-      if (splitDesc.length > 1) {
-        for (let i = 1; i < splitDesc.length; i++) {
-          pdf.text(splitDesc[i], 40, yPosition);
-          yPosition += 8;
-        }
+      for (let i = 1; i < splitDesc.length; i++) {
+        pdf.text(splitDesc[i], 40, yPosition);
+        yPosition += 4.5;
       }
+      
+      yPosition += 4.0;
       
       positionIndex++;
     }
@@ -970,7 +972,7 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
     const description = item.description;
     
     const splitDesc = pdf.splitTextToSize(description, 52);
-    const totalRowHeight = 10 + (splitDesc.length - 1) * 8;
+    const totalRowHeight = splitDesc.length * 4.5 + 5.5;
     
     if (await handlePageBreak(totalRowHeight + 5)) {
       yPosition = drawTableHeader(pdf, yPosition, pageWidth, colors, tableColumns, darkText);
@@ -982,6 +984,7 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
       pdf.rect(20, yPosition - 3, pageWidth - 40, totalRowHeight, 'F');
     }
     
+    yPosition += 1.5;
     pdf.setTextColor(darkText);
     pdf.text((index + 1).toString(), 25, yPosition);
     pdf.text(splitDesc[0], 40, yPosition);
@@ -1008,14 +1011,14 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
     const itemTotal = (item.quantity * item.unitPrice) - discountAmount;
     pdf.text(formatCurrency(itemTotal, locale), 170, yPosition);
     
-    yPosition += 10;
+    yPosition += 4.5;
     
-    if (splitDesc.length > 1) {
-      for (let i = 1; i < splitDesc.length; i++) {
-        pdf.text(splitDesc[i], 40, yPosition);
-        yPosition += 8;
-      }
+    for (let i = 1; i < splitDesc.length; i++) {
+      pdf.text(splitDesc[i], 40, yPosition);
+      yPosition += 4.5;
     }
+    
+    yPosition += 4.0;
   }
   
   pdf.setDrawColor(203, 213, 225);

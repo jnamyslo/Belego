@@ -172,7 +172,7 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
       description = `${description} (Auftrag: ${item.jobNumber})`;
     }
     
-    const splitDesc = pdf.splitTextToSize(description, 60);
+    const splitDesc = pdf.splitTextToSize(description, 52);
     const totalRowHeight = 10 + (splitDesc.length - 1) * 8;
     
     // Check for page break
@@ -591,7 +591,7 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
 
   for (const entry of timeEntries) {
     const desc = entry.description || 'Arbeitsleistung';
-    const splitDesc = pdf.splitTextToSize(desc, 55);
+    const splitDesc = pdf.splitTextToSize(desc, 52);
     const rowHeight = 10 + (splitDesc.length - 1) * 8;
     
     if (await handlePageBreak(rowHeight + 5)) {
@@ -633,7 +633,7 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
   // Materials
   if (job.materials && job.materials.length > 0) {
     for (const material of job.materials) {
-      const splitDesc = pdf.splitTextToSize(material.description, 55);
+      const splitDesc = pdf.splitTextToSize(material.description, 52);
       const rowHeight = 10 + (splitDesc.length - 1) * 8;
       
       if (await handlePageBreak(rowHeight + 5)) {
@@ -969,7 +969,7 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
     const item = sortedItems[index];
     const description = item.description;
     
-    const splitDesc = pdf.splitTextToSize(description, 60);
+    const splitDesc = pdf.splitTextToSize(description, 52);
     const totalRowHeight = 10 + (splitDesc.length - 1) * 8;
     
     if (await handlePageBreak(totalRowHeight + 5)) {

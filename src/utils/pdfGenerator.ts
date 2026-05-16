@@ -337,7 +337,11 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
 
   // === REVERSE CHARGE / SMALL BUSINESS CLAUSE ===
   if (hasOnlyZeroTaxRate(invoice.items)) {
-    yPosition += 8;
+    if (await handlePageBreak(12, 20)) {
+      // Clause moved to new page
+    }
+    
+    yPosition += 4;
     
     const clauseText = options.company.isSmallBusiness 
       ? 'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmerregelung)'
@@ -351,7 +355,7 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
     pdf.text(clauseText, centerX, yPosition);
     
     resetFont(pdf, darkText);
-    yPosition += 8;
+    yPosition += 4;
   }
 
   // === NOTES AND PAYMENT INFO ===
@@ -741,11 +745,11 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
 
   // Small business clause
   if (options.company.isSmallBusiness || totalTaxAmount === 0) {
-    yPosition += 8;
-    
     if (await handlePageBreak(12, 20)) {
       // Clause moved to new page
     }
+    
+    yPosition += 4;
     
     const clauseText = options.company.isSmallBusiness 
       ? 'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmerregelung)'
@@ -759,7 +763,7 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
     pdf.text(clauseText, centerX, yPosition);
     
     resetFont(pdf, darkText);
-    yPosition += 8;
+    yPosition += 4;
   }
 
   // Notes
@@ -1121,7 +1125,11 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
 
   // Small business clause
   if (options.company.isSmallBusiness && hasOnlyZeroTaxRate(quote.items)) {
-    yPosition += 8;
+    if (await handlePageBreak(12, 20)) {
+      // Clause moved to new page
+    }
+    
+    yPosition += 4;
     
     const clauseText = 'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmerregelung)';
     const textWidth = pdf.getTextWidth(clauseText);
@@ -1133,7 +1141,7 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
     pdf.text(clauseText, centerX, yPosition);
     
     resetFont(pdf, darkText);
-    yPosition += 8;
+    yPosition += 4;
   }
 
   // Notes

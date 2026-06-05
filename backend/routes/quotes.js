@@ -54,6 +54,7 @@ router.post('/', async (req, res) => {
       method: 'POST',
       endpoint: '/quotes'
     });
+    if (error.statusCode === 400) return res.status(400).json({ error: error.message });
     if (error.message === 'Customer not found') return res.status(400).json({ error: error.message });
     res.status(500).json({ error: 'Failed to create quote' });
   }
@@ -73,6 +74,7 @@ router.put('/:id', async (req, res) => {
       method: 'PUT',
       endpoint: '/quotes/:id'
     });
+    if (error.statusCode === 400) return res.status(400).json({ error: error.message });
     res.status(500).json({ error: 'Failed to update quote' });
   }
 });

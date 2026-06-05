@@ -186,6 +186,48 @@ export function validateSchema(data, schema) {
   };
 }
 
+/**
+ * Validate discount fields on invoices/quotes (global and per-item)
+ * @param {Object} data - Request data containing discount fields and optional items array
+ * @returns {{ valid: boolean, message?: string }}
+ */
+export function validateDiscountFields(data) {
+  const { globalDiscountType, globalDiscountValue, items } = data;
+
+  // Validate global discount
+  if (globalDiscountType === 'percentage') {
+    const val = parseFloat(globalDiscountValue);
+    if (isNaN(val) || val < 0 || val > 100) {
+      return { valid: false, message: 'Ungültiger Rabatt: Prozentwert muss zwischen 0 und 100 liegen' };
+    }
+  } else if (globalDiscountType === 'fixed') {
+    const val = parseFloat(globalDiscountValue);
+    if (isNaN(val) || val < 0) {
+      return { valid: false, message: 'Ungültiger Rabatt: Festbetrag muss größer oder gleich 0 sein' };
+    }
+  }
+
+  // Validate per-item discounts
+  if (Array.isArray(items)) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.discountType === 'percentage') {
+        const val = parseFloat(item.discountValue);
+        if (isNaN(val) || val < 0 || val > 100) {
+          return { valid: false, message: `Ungültiger Rabatt in Position ${i + 1}: Prozentwert muss zwischen 0 und 100 liegen` };
+        }
+      } else if (item.discountType === 'fixed') {
+        const val = parseFloat(item.discountValue);
+        if (isNaN(val) || val < 0) {
+          return { valid: false, message: `Ungültiger Rabatt in Position ${i + 1}: Festbetrag muss größer oder gleich 0 sein` };
+        }
+      }
+    }
+  }
+
+  return { valid: true };
+}
+
 // Common validation schemas
 export const schemas = {
   customer: {
@@ -228,6 +270,7 @@ export default {
   ValidationError,
   validateRequired,
   validateSchema,
+  validateDiscountFields,
   schemas,
 };
 

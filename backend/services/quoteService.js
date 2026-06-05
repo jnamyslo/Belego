@@ -2,8 +2,16 @@ import { pool, query } from '../database.js';
 import { findQuoteById } from '../queries/quoteQueries.js';
 import { findInvoiceById } from '../queries/invoiceQueries.js';
 import { generateInvoiceNumber } from './invoiceService.js';
+import { validateDiscountFields } from '../utils/validation.js';
 
 export async function createQuote(data) {
+  const discountValidation = validateDiscountFields(data);
+  if (!discountValidation.valid) {
+    const err = new Error(discountValidation.message);
+    err.statusCode = 400;
+    throw err;
+  }
+
   const {
     customerId,
     items = [],
@@ -172,6 +180,13 @@ export async function createQuote(data) {
 }
 
 export async function updateQuote(id, data) {
+  const discountValidation = validateDiscountFields(data);
+  if (!discountValidation.valid) {
+    const err = new Error(discountValidation.message);
+    err.statusCode = 400;
+    throw err;
+  }
+
   const client = await pool.connect();
 
   try {

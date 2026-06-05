@@ -1,6 +1,7 @@
 import { pool, query } from '../database.js';
 import { findInvoiceById } from '../queries/invoiceQueries.js';
 import logger from '../utils/logger.js';
+import { validateDiscountFields } from '../utils/validation.js';
 
 export async function generateInvoiceNumber(issueDate) {
   const client = await pool.connect();
@@ -42,6 +43,13 @@ export async function generateInvoiceNumber(issueDate) {
 }
 
 export async function createInvoice(data) {
+  const discountValidation = validateDiscountFields(data);
+  if (!discountValidation.valid) {
+    const err = new Error(discountValidation.message);
+    err.statusCode = 400;
+    throw err;
+  }
+
   const {
     customerId,
     items = [],
@@ -169,6 +177,13 @@ export async function createInvoice(data) {
 }
 
 export async function updateInvoice(id, data) {
+  const discountValidation = validateDiscountFields(data);
+  if (!discountValidation.valid) {
+    const err = new Error(discountValidation.message);
+    err.statusCode = 400;
+    throw err;
+  }
+
   const client = await pool.connect();
 
   try {

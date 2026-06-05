@@ -132,6 +132,7 @@ export async function findQuoteById(id) {
     globalDiscountType: row.global_discount_type,
     globalDiscountValue: row.global_discount_value ? parseFloat(row.global_discount_value) : null,
     globalDiscountAmount: row.global_discount_amount ? parseFloat(row.global_discount_amount) : null,
+    convertedToInvoiceId: row.converted_to_invoice_id,
     createdAt: row.created_at
   };
 }

@@ -125,6 +125,9 @@ export async function findInvoiceById(id) {
     total: parseFloat(row.total),
     status: row.status,
     notes: row.notes,
+    globalDiscountType: row.global_discount_type,
+    globalDiscountValue: row.global_discount_value ? parseFloat(row.global_discount_value) : null,
+    globalDiscountAmount: row.global_discount_amount ? parseFloat(row.global_discount_amount) : null,
     createdAt: row.created_at
   };
 }

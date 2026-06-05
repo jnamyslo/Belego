@@ -473,8 +473,6 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
     addInvoiceTemplate,
     updateInvoiceTemplate,
     deleteInvoiceTemplate,
-    getMaterialTemplates,
-    getHourlyRates,
   } = useCompany();
   const {
     getHourlyRatesForCustomer,

@@ -2,14 +2,12 @@ import React, { useState } from 'react';
 import logger from '../utils/logger';
 import { Plus, Edit, Trash2, Search, Mail, Phone, MapPin, X, Clock, Package } from 'lucide-react';
 import { useCustomers } from '../context/CustomerContext';
-import { useCompany } from '../context/CompanyContext';
 import { Customer, CustomerEmail, HourlyRate, MaterialTemplate } from '../types';
 import { apiService } from '../services/api';
 import { findDuplicateCustomer, showDuplicateCustomerAlert, formatCustomerNumber } from '../utils/customerUtils';
 
 export function CustomerManagement() {
   const { customers, addCustomer, updateCustomer, deleteCustomer, refreshCustomers } = useCustomers();
-  const { getHourlyRates } = useCompany();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [searchTerm, setSearchTerm] = useState('');

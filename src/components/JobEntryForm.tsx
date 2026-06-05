@@ -25,7 +25,7 @@ interface JobEntryFormProps {
 
 export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, onCreateCustomer, onNavigateToCustomers, onNavigateToSettings }: JobEntryFormProps) {
   const { customers: allCustomers, addCustomer, refreshCustomers } = useCustomers();
-  const { company, getMaterialTemplates, addMaterialTemplate, updateMaterialTemplate, deleteMaterialTemplate, addHourlyRate, updateHourlyRate, deleteHourlyRate, getHourlyRates, hourlyRates, materialTemplates } = useCompany();
+  const { company, addMaterialTemplate, updateMaterialTemplate, deleteMaterialTemplate, addHourlyRate, updateHourlyRate, deleteHourlyRate, getHourlyRates, hourlyRates, materialTemplates } = useCompany();
 
   // TODO: replace with useDocumentHelpers()
   const getHourlyRatesForCustomer = (customerId?: string) => getHourlyRatesForCustomerUtil(allCustomers, hourlyRates, customerId);

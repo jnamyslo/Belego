@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
 import { X, Plus, Trash2, Save, Clock, User, Calendar, DollarSign, Edit, PenTool } from 'lucide-react';
 import { JobEntry, Customer, JobMaterial, JobAttachment, JobTimeEntry, JobSignature } from '../types';
-import { useCustomers, getHourlyRatesForCustomer as getHourlyRatesForCustomerUtil, getCombinedHourlyRatesForCustomer as getCombinedHourlyRatesForCustomerUtil, getCombinedMaterialTemplatesForCustomer as getCombinedMaterialTemplatesForCustomerUtil } from '../context/CustomerContext';
+import { useCustomers } from '../context/CustomerContext';
 import { useCompany } from '../context/CompanyContext';
+import { useDocumentHelpers } from '../hooks/useDocumentHelpers';
 import { AttachmentManager } from './AttachmentManager';
 import { DocumentPreview, PreviewDocument } from './DocumentPreview';
 import { SignaturePad } from './SignaturePad';
@@ -24,15 +25,10 @@ interface JobEntryFormProps {
 }
 
 export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, onCreateCustomer, onNavigateToCustomers, onNavigateToSettings }: JobEntryFormProps) {
-  const { customers: allCustomers, addCustomer, refreshCustomers } = useCustomers();
-  const { company, addMaterialTemplate, updateMaterialTemplate, deleteMaterialTemplate, addHourlyRate, updateHourlyRate, deleteHourlyRate, getHourlyRates, hourlyRates, materialTemplates } = useCompany();
+  const { addCustomer, refreshCustomers } = useCustomers();
+  const { company, addMaterialTemplate, updateMaterialTemplate, deleteMaterialTemplate, addHourlyRate, updateHourlyRate, deleteHourlyRate, getHourlyRates } = useCompany();
 
-  // TODO: replace with useDocumentHelpers()
-  const getHourlyRatesForCustomer = (customerId?: string) => getHourlyRatesForCustomerUtil(allCustomers, hourlyRates, customerId);
-  // TODO: replace with useDocumentHelpers()
-  const getCombinedHourlyRatesForCustomer = (customerId?: string) => getCombinedHourlyRatesForCustomerUtil(allCustomers, hourlyRates, company.showCombinedDropdowns ?? false, customerId);
-  // TODO: replace with useDocumentHelpers()
-  const getCombinedMaterialTemplatesForCustomer = (customerId?: string) => getCombinedMaterialTemplatesForCustomerUtil(allCustomers, materialTemplates, company.showCombinedDropdowns ?? false, customerId);
+  const { getHourlyRatesForCustomer, getCombinedHourlyRatesForCustomer, getCombinedMaterialTemplatesForCustomer } = useDocumentHelpers();
 
 
   const [showCustomerForm, setShowCustomerForm] = useState(false);

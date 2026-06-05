@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Send, Clock, Euro, AlertCircle, Check, X, Download, Mail, Eye } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useCustomers } from '../context/CustomerContext';
+import { useInvoices } from '../context/InvoiceContext';
+import { useCompany } from '../context/CompanyContext';
 import { apiService } from '../services/api';
 import { ReminderEligibility, Invoice, Customer } from '../types';
 import logger from '../utils/logger';
@@ -11,7 +13,9 @@ import { blobToBase64 } from '../utils/blobUtils';
 import { DocumentPreview, PreviewDocument } from './DocumentPreview';
 
 export function ReminderManagement() {
-  const { company, customers, refreshInvoices, invoices } = useApp();
+  const { customers } = useCustomers();
+  const { invoices, refreshInvoices } = useInvoices();
+  const { company } = useCompany();
   const [activeTab, setActiveTab] = useState<'eligible' | 'history' | 'hardship'>('eligible');
   const [eligibleReminders, setEligibleReminders] = useState<ReminderEligibility[]>([]);
   const [reminderHistory, setReminderHistory] = useState<Invoice[]>([]);
@@ -728,7 +732,7 @@ interface HardshipCasesTabProps {
 }
 
 function HardshipCasesTab({ invoices, formatDate, getStatusBadge, onDownloadReminder, onPreviewReminder }: HardshipCasesTabProps) {
-  const { company } = useApp();
+  const { company } = useCompany();
   
   // Calculate total amount including all reminder fees
   const calculateTotalWithReminderFees = (invoice: Invoice): number => {

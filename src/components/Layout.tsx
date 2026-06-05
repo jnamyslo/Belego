@@ -1,7 +1,7 @@
 import React, { ReactNode, useState } from 'react';
 import { FileText, Users, Settings, BarChart3, Building2, Menu, X, Briefcase, Calendar, Home, FileCheck, Bell } from 'lucide-react';
 import { DynamicColors } from './DynamicColors';
-import { useApp } from '../context/AppContext';
+import { useCompany } from '../context/CompanyContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -10,7 +10,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
-  const { company } = useApp();
+  const { company } = useCompany();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const baseNavItems = [

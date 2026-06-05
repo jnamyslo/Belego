@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
 import { Save, Building2, Mail, Phone, Globe, CreditCard, Upload, X, Languages, Palette, Briefcase, FileText, Plus, Trash2, Database, Clock, Package, Edit2, BarChart3 } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useCompany } from '../context/CompanyContext';
 import { getLocaleDisplayName } from '../utils/formatters';
 import { ColorPicker } from './ColorPicker';
 import { BackupManagement } from './BackupManagement';
@@ -11,7 +11,7 @@ import { updateFavicon, updatePageTitle } from '../utils/faviconUtils';
 import { YearlyInvoiceStartNumber, MaterialTemplate, HourlyRate } from '../types';
 
 export function Settings() {
-  const { company, updateCompany } = useApp();
+  const { company, updateCompany } = useCompany();
   const [formData, setFormData] = useState(company);
   const [isSaving, setIsSaving] = useState(false);
   const [yearlyStartNumbers, setYearlyStartNumbers] = useState<YearlyInvoiceStartNumber[]>([]);

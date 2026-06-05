@@ -13,7 +13,9 @@ import {
   Search,
   X
 } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useCustomers } from '../context/CustomerContext';
+import { useJobs } from '../context/JobContext';
+import { useCompany } from '../context/CompanyContext';
 import { JobEntry } from '../types';
 import { JobEntryForm } from './JobEntryForm';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -24,7 +26,9 @@ interface CalendarProps {
 }
 
 export function Calendar({ onNavigate }: CalendarProps = {}) {
-  const { jobEntries, updateJobEntry, customers, company, addJobEntry, addCustomer, refreshCustomers, refreshJobEntries } = useApp();
+  const { customers, addCustomer, refreshCustomers } = useCustomers();
+  const { jobEntries, addJobEntry, updateJobEntry, refreshJobEntries } = useJobs();
+  const { company } = useCompany();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [draggedJob, setDraggedJob] = useState<JobEntry | null>(null);
   const [showJobForm, setShowJobForm] = useState(false);

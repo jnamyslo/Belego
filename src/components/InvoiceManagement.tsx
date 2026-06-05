@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
 import { Plus, Edit, Trash2, Search, Download, FileText, Send, FileDown, Check, Mail, Eye } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useCustomers } from '../context/CustomerContext';
+import { useInvoices } from '../context/InvoiceContext';
+import { useCompany } from '../context/CompanyContext';
 import { Invoice } from '../types';
 import { InvoiceEditor } from './InvoiceEditor';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -20,7 +22,9 @@ interface InvoiceManagementProps {
 }
 
 export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate }: InvoiceManagementProps = {}) {
-  const { invoices, deleteInvoice, updateInvoice, company, customers, addCustomer } = useApp();
+  const { customers, addCustomer } = useCustomers();
+  const { invoices, deleteInvoice, updateInvoice } = useInvoices();
+  const { company } = useCompany();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm || '');

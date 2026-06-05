@@ -14,7 +14,7 @@ import {
   X,
   AlertCircle
 } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useCustomers } from '../context/CustomerContext';
 import { apiService } from '../services/api';
 import { 
   InvoiceJournalResponse, 
@@ -25,7 +25,7 @@ import {
 } from '../types';
 
 export function ReportingManagement() {
-  const { customers } = useApp();
+  const { customers } = useCustomers();
   
   // State for invoice journal
   const [journalData, setJournalData] = useState<InvoiceJournalResponse | null>(null);

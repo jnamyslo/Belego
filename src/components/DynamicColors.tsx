@@ -1,8 +1,8 @@
 import React from 'react';
-import { useApp } from '../context/AppContext';
+import { useCompany } from '../context/CompanyContext';
 
 export function DynamicColors() {
-  const { company } = useApp();
+  const { company } = useCompany();
   
   // Default colors if not set
   const primaryColor = company.primaryColor || '#2563eb';

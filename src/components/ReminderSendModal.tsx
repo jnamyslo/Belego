@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Download, Mail, Eye, CheckSquare } from 'lucide-react';
 import { Invoice, Customer } from '../types';
-import { useApp } from '../context/AppContext';
+import { useCustomers } from '../context/CustomerContext';
+import { useCompany } from '../context/CompanyContext';
 import { formatCurrency } from '../utils/formatters';
 import { generateReminderPDF } from '../utils/pdfGenerator';
 import { blobToBase64 } from '../utils/blobUtils';
@@ -30,7 +31,8 @@ export function ReminderSendModal({
   isBulkMode = false,
   bulkInvoices = []
 }: ReminderSendModalProps) {
-  const { company, customers } = useApp();
+  const { company } = useCompany();
+  const { customers } = useCustomers();
   const [isLoading, setIsLoading] = useState(false);
   const [updateStatus, setUpdateStatus] = useState(true);
   const [customText, setCustomText] = useState('');

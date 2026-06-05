@@ -21,7 +21,9 @@ import {
   PenTool,
   Mail
 } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useCustomers } from '../context/CustomerContext';
+import { useJobs } from '../context/JobContext';
+import { useCompany } from '../context/CompanyContext';
 import { JobEntry, Customer } from '../types';
 import { JobEntryForm } from './JobEntryForm';
 import { JobInvoiceGenerator } from './JobInvoiceGenerator';
@@ -36,18 +38,9 @@ interface JobManagementProps {
 }
 
 export function JobManagement({ onNavigate }: JobManagementProps = {}) {
-  const { 
-    jobEntries, 
-    addJobEntry, 
-    updateJobEntry, 
-    deleteJobEntry,
-    refreshJobEntries,
-    addJobSignature,
-    customers,
-    addCustomer,
-    refreshCustomers,
-    company
-  } = useApp();
+  const { customers, addCustomer, refreshCustomers } = useCustomers();
+  const { jobEntries, addJobEntry, updateJobEntry, deleteJobEntry, refreshJobEntries, addJobSignature } = useJobs();
+  const { company } = useCompany();
 
   const [showForm, setShowForm] = useState(false);
   const [editingJob, setEditingJob] = useState<JobEntry | null>(null);

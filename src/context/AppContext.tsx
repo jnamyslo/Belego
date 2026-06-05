@@ -97,7 +97,7 @@ interface LoadingContextType {
 
 const LoadingContext = createContext<LoadingContextType | undefined>(undefined);
 
-function useLoading(): LoadingContextType {
+export function useLoading(): LoadingContextType {
   const context = useContext(LoadingContext);
   if (context === undefined) {
     throw new Error('useLoading must be used within LoadingProvider');

@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { generateInvoicePDF, generateJobPDF, downloadBlob } from '../utils/pdfGenerator';
 import { Invoice, Quote, JobEntry, InvoiceAttachment, JobAttachment, Company, Customer } from '../types';
-import { useApp } from '../context/AppContext';
+import { useCustomers } from '../context/CustomerContext';
+import { useCompany } from '../context/CompanyContext';
 
 interface DocumentPreviewProps {
   isOpen: boolean;
@@ -42,7 +43,8 @@ export interface PreviewDocument {
 }
 
 export function DocumentPreview({ isOpen, onClose, documents = [], initialIndex = 0 }: DocumentPreviewProps) {
-  const { company, customers } = useApp();
+  const { company } = useCompany();
+  const { customers } = useCustomers();
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);

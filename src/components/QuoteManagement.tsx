@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
 import { Plus, Edit, Trash2, Search, Download, FileText, Send, Check, Eye, FileCheck, Mail, X, CheckCircle } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useCustomers } from '../context/CustomerContext';
+import { useInvoices } from '../context/InvoiceContext';
+import { useCompany } from '../context/CompanyContext';
 import { Quote } from '../types';
 import { ConfirmationModal } from './ConfirmationModal';
 import { EmailSendModal } from './EmailSendModal';
@@ -16,7 +18,9 @@ interface QuoteManagementProps {
 }
 
 export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
-  const { company, customers, refreshInvoices } = useApp();
+  const { customers } = useCustomers();
+  const { refreshInvoices } = useInvoices();
+  const { company } = useCompany();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');

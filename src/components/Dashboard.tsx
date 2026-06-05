@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import logger from '../utils/logger';
 import { Clock, CheckCircle, Send, Check } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useCustomers } from '../context/CustomerContext';
+import { useInvoices } from '../context/InvoiceContext';
+import { useCompany } from '../context/CompanyContext';
+import { useLoading } from '../context/AppContext';
 import { formatCurrency } from '../utils/formatters';
 import { blobToBase64 } from '../utils/blobUtils';
 import { EmailSendModal } from './EmailSendModal';
@@ -14,7 +17,10 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
-  const { invoices, customers, updateInvoice, loading, company } = useApp();
+  const { customers } = useCustomers();
+  const { invoices, updateInvoice } = useInvoices();
+  const { company } = useCompany();
+  const { loading } = useLoading();
 
   // Email modal state
   const [emailModal, setEmailModal] = useState<{

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useLoading } from './context/AppContext';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { CustomerManagement } from './components/CustomerManagement';
@@ -12,7 +12,8 @@ import { Calendar } from './components/Calendar';
 import { ReportingManagement } from './components/ReportingManagement';
 import { ReminderManagement } from './components/ReminderManagement';
 import { DynamicColors } from './components/DynamicColors';
-import { useApp } from './context/AppContext';
+import { useCompany } from './context/CompanyContext';
+import { useQuotes } from './context/QuoteContext';
 
 interface PageState {
   page: string;
@@ -65,7 +66,9 @@ function App() {
   }, []);
 
   const AppContent = () => {
-    const { company, quotes, loading } = useApp();
+    const { loading } = useLoading();
+    const { company } = useCompany();
+    const { quotes } = useQuotes();
     
     const renderPage = () => {
       // Show loading state while data is being fetched

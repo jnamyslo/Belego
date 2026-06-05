@@ -55,6 +55,9 @@ export async function createInvoice(data) {
     globalDiscountAmount = null,
   } = data;
 
+  // Generate invoice number before opening transaction (generateInvoiceNumber uses its own connection)
+  const invoiceNumber = await generateInvoiceNumber(issueDate);
+
   const client = await pool.connect();
 
   try {
@@ -66,37 +69,6 @@ export async function createInvoice(data) {
       throw new Error('Customer not found');
     }
     const customerName = customerResult.rows[0].name;
-
-    // Generate invoice number - format: RE-YYYY-XXX
-    // Use the year from the issue date instead of current system year
-    const invoiceYear = new Date(issueDate).getFullYear();
-    const yearPattern = `RE-${invoiceYear}-%`;
-    const lastInvoiceResult = await client.query('SELECT invoice_number FROM invoices WHERE invoice_number LIKE $1 ORDER BY created_at DESC LIMIT 1', [yearPattern]);
-
-    // Get year-specific invoice start number, fallback to 1 if not defined
-    const yearlyStartResult = await client.query('SELECT start_number FROM yearly_invoice_start_numbers WHERE year = $1', [invoiceYear]);
-    const yearStartNumber = yearlyStartResult.rows.length > 0 ? yearlyStartResult.rows[0].start_number : 1;
-
-    let invoiceNumber;
-    if (lastInvoiceResult.rows.length === 0) {
-      // No invoices for this year found - start with year-specific start number
-      invoiceNumber = `RE-${invoiceYear}-${String(yearStartNumber).padStart(3, '0')}`;
-    } else {
-      const lastInvoiceNumber = lastInvoiceResult.rows[0].invoice_number;
-      if (lastInvoiceNumber && lastInvoiceNumber.startsWith(`RE-${invoiceYear}-`)) {
-        const numberPart = lastInvoiceNumber.substring(`RE-${invoiceYear}-`.length); // Remove "RE-YYYY-" prefix
-        const lastNumber = parseInt(numberPart);
-        if (!isNaN(lastNumber)) {
-          // Continue from last number, but respect year start number as minimum
-          const nextNumber = Math.max(lastNumber + 1, yearStartNumber);
-          invoiceNumber = `RE-${invoiceYear}-${String(nextNumber).padStart(3, '0')}`;
-        } else {
-          invoiceNumber = `RE-${invoiceYear}-${String(yearStartNumber).padStart(3, '0')}`;
-        }
-      } else {
-        invoiceNumber = `RE-${invoiceYear}-${String(yearStartNumber).padStart(3, '0')}`;
-      }
-    }
 
     // Calculate totals with discounts
     let subtotalBeforeDiscounts = 0;

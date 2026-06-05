@@ -1,7 +1,7 @@
 import { pool, query } from '../database.js';
 import { findQuoteById } from '../queries/quoteQueries.js';
 import { findInvoiceById } from '../queries/invoiceQueries.js';
-import logger from '../utils/logger.js';
+import { generateInvoiceNumber } from './invoiceService.js';
 
 export async function createQuote(data) {
   const {
@@ -279,6 +279,10 @@ export async function deleteQuote(id) {
 }
 
 export async function convertQuoteToInvoice(id) {
+  // Generate invoice number before opening transaction (generateInvoiceNumber uses its own connection)
+  const issueDate = new Date().toISOString().split('T')[0];
+  const invoiceNumber = await generateInvoiceNumber(issueDate);
+
   const client = await pool.connect();
 
   try {
@@ -348,36 +352,7 @@ export async function convertQuoteToInvoice(id) {
       return { error: 'Only accepted quotes can be converted to invoices', status: 400 };
     }
 
-    // Generate invoice number
-    const invoiceYear = new Date().getFullYear();
-    const yearPattern = `RE-${invoiceYear}-%`;
-    const lastInvoiceResult = await client.query('SELECT invoice_number FROM invoices WHERE invoice_number LIKE $1 ORDER BY created_at DESC LIMIT 1', [yearPattern]);
-
-    // Get year-specific invoice start number, fallback to 1 if not defined
-    const yearlyStartResult = await client.query('SELECT start_number FROM yearly_invoice_start_numbers WHERE year = $1', [invoiceYear]);
-    const yearStartNumber = yearlyStartResult.rows.length > 0 ? yearlyStartResult.rows[0].start_number : 1;
-
-    let invoiceNumber;
-    if (lastInvoiceResult.rows.length === 0) {
-      invoiceNumber = `RE-${invoiceYear}-${String(yearStartNumber).padStart(3, '0')}`;
-    } else {
-      const lastInvoiceNumber = lastInvoiceResult.rows[0].invoice_number;
-      if (lastInvoiceNumber && lastInvoiceNumber.startsWith(`RE-${invoiceYear}-`)) {
-        const numberPart = lastInvoiceNumber.substring(`RE-${invoiceYear}-`.length);
-        const lastNumber = parseInt(numberPart);
-        if (!isNaN(lastNumber)) {
-          const nextNumber = Math.max(lastNumber + 1, yearStartNumber);
-          invoiceNumber = `RE-${invoiceYear}-${String(nextNumber).padStart(3, '0')}`;
-        } else {
-          invoiceNumber = `RE-${invoiceYear}-${String(yearStartNumber).padStart(3, '0')}`;
-        }
-      } else {
-        invoiceNumber = `RE-${invoiceYear}-${String(yearStartNumber).padStart(3, '0')}`;
-      }
-    }
-
     // Create invoice
-    const issueDate = new Date().toISOString().split('T')[0];
     const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     const invoiceResult = await client.query(`

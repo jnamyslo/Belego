@@ -20,7 +20,10 @@ import {
 import {
   CSS,
 } from '@dnd-kit/utilities';
-import { useApp } from '../context/AppContext';
+import { useQuotes } from '../context/QuoteContext';
+import { useCustomers } from '../context/CustomerContext';
+import { useCompany } from '../context/CompanyContext';
+import { useDocumentHelpers } from '../hooks/useDocumentHelpers';
 import { Quote, QuoteItem, QuoteAttachment } from '../types';
 import { AttachmentManager } from './AttachmentManager';
 import { calculateInvoiceWithDiscounts, updateItemWithDiscount, formatDiscountDisplay, validateDiscount } from '../utils/discountUtils';
@@ -53,7 +56,7 @@ function SortableQuoteItem({
   isLast,
   isSmallBusiness 
 }: SortableQuoteItemProps) {
-  const { company } = useApp();
+  const { company } = useCompany();
   const discountsEnabled = company.discountsEnabled !== false;
   const {
     attributes,
@@ -435,7 +438,10 @@ interface QuoteEditorProps {
 }
 
 export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCustomers, onNavigateToSettings }: QuoteEditorProps) {
-  const { customers, company, addQuote, updateQuote, getMaterialTemplatesForCustomer, getHourlyRatesForCustomer, getCombinedMaterialTemplatesForCustomer, getCombinedHourlyRatesForCustomer } = useApp();
+  const { customers } = useCustomers();
+  const { company } = useCompany();
+  const { addQuote, updateQuote } = useQuotes();
+  const { getMaterialTemplatesForCustomer, getHourlyRatesForCustomer, getCombinedMaterialTemplatesForCustomer, getCombinedHourlyRatesForCustomer } = useDocumentHelpers();
   const discountsEnabled = company.discountsEnabled !== false;
   
   const [quoteNumber, setQuoteNumber] = useState('');

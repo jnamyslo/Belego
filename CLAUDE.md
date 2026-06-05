@@ -100,3 +100,17 @@ Three libraries in use — pick by context:
 - Minimum code that solves the problem — no speculative features or abstractions.
 - Touch only what the task requires. Don't "improve" adjacent code.
 - Remove imports/variables/functions that YOUR changes made unused; leave pre-existing dead code alone.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`jnamyslo/Belego`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` at root + `docs/adr/`. See `docs/agents/domain.md`.

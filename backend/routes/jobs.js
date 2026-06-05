@@ -2,6 +2,7 @@ import express from 'express';
 import { pool } from '../database.js';
 import { randomUUID } from 'crypto';
 import logger from '../utils/logger.js';
+import { findAllJobs, findJobById } from '../queries/jobQueries.js';
 
 const router = express.Router();
 
@@ -63,50 +64,10 @@ const formatJobData = (row, customerName = null) => ({
 // Get all job entries
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT j.*, c.name as customer_name,
-             json_agg(
-               DISTINCT jsonb_build_object(
-                 'id', ja.id,
-                 'name', ja.name,
-                 'content', ja.content,
-                 'contentType', ja.content_type,
-                 'size', ja.size,
-                 'uploadedAt', ja.uploaded_at
-               )
-             ) FILTER (WHERE ja.id IS NOT NULL) as attachments,
-             COALESCE(
-               json_agg(
-                 DISTINCT jsonb_build_object(
-                   'id', jte.id,
-                   'description', jte.description,
-                   'startTime', jte.start_time,
-                   'endTime', jte.end_time,
-                   'hoursWorked', jte.hours_worked,
-                   'hourlyRate', jte.hourly_rate,
-                   'hourlyRateId', jte.hourly_rate_id,
-                   'taxRate', jte.tax_rate,
-                   'total', jte.total
-                 )
-               ) FILTER (WHERE jte.id IS NOT NULL), '[]'::json
-             ) as time_entries
-      FROM job_entries j
-      LEFT JOIN customers c ON j.customer_id = c.id
-      LEFT JOIN job_attachments ja ON j.id = ja.job_id
-      LEFT JOIN job_time_entries jte ON j.id = jte.job_id
-      GROUP BY j.id, c.name
-      ORDER BY j.date DESC, j.created_at DESC
-    `);
-    
-    const jobs = result.rows.map(row => formatJobData(row));
+    const jobs = await findAllJobs();
     res.json(jobs);
   } catch (error) {
-    logger.error('Failed to fetch jobs', {
-      error: error.message,
-      stack: error.stack,
-      method: 'GET',
-      endpoint: '/jobs'
-    });
+    logger.error('Failed to fetch jobs', { error: error.message, stack: error.stack });
     res.status(500).json({ error: 'Failed to fetch jobs' });
   }
 });
@@ -114,47 +75,8 @@ router.get('/', async (req, res) => {
 // Get a specific job entry
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await pool.query(`
-      SELECT j.*, c.name as customer_name,
-             json_agg(
-               DISTINCT jsonb_build_object(
-                 'id', ja.id,
-                 'name', ja.name,
-                 'content', ja.content,
-                 'contentType', ja.content_type,
-                 'size', ja.size,
-                 'uploadedAt', ja.uploaded_at
-               )
-             ) FILTER (WHERE ja.id IS NOT NULL) as attachments,
-             COALESCE(
-               json_agg(
-                 DISTINCT jsonb_build_object(
-                   'id', jte.id,
-                   'description', jte.description,
-                   'startTime', jte.start_time,
-                   'endTime', jte.end_time,
-                   'hoursWorked', jte.hours_worked,
-                   'hourlyRate', jte.hourly_rate,
-                   'hourlyRateId', jte.hourly_rate_id,
-                   'taxRate', jte.tax_rate,
-                   'total', jte.total
-                 )
-               ) FILTER (WHERE jte.id IS NOT NULL), '[]'::json
-             ) as time_entries
-      FROM job_entries j
-      LEFT JOIN customers c ON j.customer_id = c.id
-      LEFT JOIN job_attachments ja ON j.id = ja.job_id
-      LEFT JOIN job_time_entries jte ON j.id = jte.job_id
-      WHERE j.id = $1
-      GROUP BY j.id, c.name
-    `, [id]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Job not found' });
-    }
-    
-    const job = formatJobData(result.rows[0]);
+    const job = await findJobById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
     res.json(job);
   } catch (error) {
     logger.error('Error fetching job:', error);

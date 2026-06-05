@@ -1,82 +1,17 @@
 import express from 'express';
 import { query } from '../database.js';
 import logger from '../utils/logger.js';
+import { findAllInvoices, findInvoiceById } from '../queries/invoiceQueries.js';
 
 const router = express.Router();
 
 // Get all invoices
 router.get('/', async (req, res) => {
   try {
-    const result = await query(`
-      SELECT i.*, 
-             COALESCE(items_subquery.items, '{}'::jsonb[]) as items,
-             COALESCE(attachments_subquery.attachments, '[]'::jsonb) as attachments
-      FROM invoices i
-      LEFT JOIN (
-        SELECT invoice_id,
-               array_agg(
-                 jsonb_build_object(
-                   'id', id,
-                   'description', description,
-                   'quantity', quantity,
-                   'unitPrice', unit_price,
-                   'taxRate', tax_rate,
-                   'total', total,
-                   'order', item_order,
-                   'discountType', discount_type,
-                   'discountValue', discount_value,
-                   'discountAmount', discount_amount
-                 ) ORDER BY item_order
-               ) as items
-        FROM invoice_items
-        GROUP BY invoice_id
-      ) items_subquery ON i.id = items_subquery.invoice_id
-      LEFT JOIN (
-        SELECT invoice_id,
-               jsonb_agg(
-                 jsonb_build_object(
-                   'id', id,
-                   'name', name,
-                   'content', content,
-                   'contentType', content_type,
-                   'size', size,
-                   'uploadedAt', uploaded_at
-                 )
-               ) as attachments
-        FROM invoice_attachments
-        GROUP BY invoice_id
-      ) attachments_subquery ON i.id = attachments_subquery.invoice_id
-      ORDER BY i.created_at DESC
-    `);
-
-    const invoices = result.rows.map(row => ({
-      id: row.id,
-      invoiceNumber: row.invoice_number,
-      customerId: row.customer_id,
-      customerName: row.customer_name,
-      issueDate: row.issue_date,
-      dueDate: row.due_date,
-      items: row.items || [],
-      attachments: row.attachments || [],
-      subtotal: parseFloat(row.subtotal),
-      taxAmount: parseFloat(row.tax_amount),
-      total: parseFloat(row.total),
-      status: row.status,
-      notes: row.notes,
-      globalDiscountType: row.global_discount_type,
-      globalDiscountValue: row.global_discount_value ? parseFloat(row.global_discount_value) : null,
-      globalDiscountAmount: row.global_discount_amount ? parseFloat(row.global_discount_amount) : null,
-      createdAt: row.created_at
-    }));
-
+    const invoices = await findAllInvoices();
     res.json(invoices);
   } catch (error) {
-    logger.error('Failed to fetch invoices', {
-      error: error.message,
-      stack: error.stack,
-      method: 'GET',
-      endpoint: '/invoices'
-    });
+    logger.error('Failed to fetch invoices', { error: error.message, stack: error.stack });
     res.status(500).json({ error: 'Failed to fetch invoices' });
   }
 });
@@ -84,79 +19,11 @@ router.get('/', async (req, res) => {
 // Get invoice by ID
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await query(`
-      SELECT i.*, 
-             COALESCE(items_subquery.items, '{}'::jsonb[]) as items,
-             COALESCE(attachments_subquery.attachments, '[]'::jsonb) as attachments
-      FROM invoices i
-      LEFT JOIN (
-        SELECT invoice_id,
-               array_agg(
-                 jsonb_build_object(
-                   'id', id,
-                   'description', description,
-                   'quantity', quantity,
-                   'unitPrice', unit_price,
-                   'taxRate', tax_rate,
-                   'total', total,
-                   'order', item_order
-                 ) ORDER BY item_order
-               ) as items
-        FROM invoice_items
-        WHERE invoice_id = $1
-        GROUP BY invoice_id
-      ) items_subquery ON i.id = items_subquery.invoice_id
-      LEFT JOIN (
-        SELECT invoice_id,
-               jsonb_agg(
-                 jsonb_build_object(
-                   'id', id,
-                   'name', name,
-                   'content', content,
-                   'contentType', content_type,
-                   'size', size,
-                   'uploadedAt', uploaded_at
-                 )
-               ) as attachments
-        FROM invoice_attachments
-        WHERE invoice_id = $1
-        GROUP BY invoice_id
-      ) attachments_subquery ON i.id = attachments_subquery.invoice_id
-      WHERE i.id = $1
-    `, [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Invoice not found' });
-    }
-
-    const row = result.rows[0];
-    const invoice = {
-      id: row.id,
-      invoiceNumber: row.invoice_number,
-      customerId: row.customer_id,
-      customerName: row.customer_name,
-      issueDate: row.issue_date,
-      dueDate: row.due_date,
-      items: row.items || [],
-      attachments: row.attachments || [],
-      subtotal: parseFloat(row.subtotal),
-      taxAmount: parseFloat(row.tax_amount),
-      total: parseFloat(row.total),
-      status: row.status,
-      notes: row.notes,
-      createdAt: row.created_at
-    };
-
+    const invoice = await findInvoiceById(req.params.id);
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
     res.json(invoice);
   } catch (error) {
-    logger.error('Failed to fetch invoice', {
-      error: error.message,
-      stack: error.stack,
-      invoiceId: req.params.id,
-      method: 'GET',
-      endpoint: '/invoices/:id'
-    });
+    logger.error('Failed to fetch invoice', { error: error.message, invoiceId: req.params.id });
     res.status(500).json({ error: 'Failed to fetch invoice' });
   }
 });

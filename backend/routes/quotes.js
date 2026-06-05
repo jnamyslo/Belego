@@ -1,83 +1,17 @@
 import express from 'express';
 import { query } from '../database.js';
 import logger from '../utils/logger.js';
+import { findAllQuotes, findQuoteById } from '../queries/quoteQueries.js';
 
 const router = express.Router();
 
 // Get all quotes
 router.get('/', async (req, res) => {
   try {
-    const result = await query(`
-      SELECT q.*, 
-             COALESCE(items_subquery.items, '{}'::jsonb[]) as items,
-             COALESCE(attachments_subquery.attachments, '[]'::jsonb) as attachments
-      FROM quotes q
-      LEFT JOIN (
-        SELECT quote_id,
-               array_agg(
-                 jsonb_build_object(
-                   'id', id,
-                   'description', description,
-                   'quantity', quantity,
-                   'unitPrice', unit_price,
-                   'taxRate', tax_rate,
-                   'total', total,
-                   'order', item_order,
-                   'discountType', discount_type,
-                   'discountValue', discount_value,
-                   'discountAmount', discount_amount
-                 ) ORDER BY item_order
-               ) as items
-        FROM quote_items
-        GROUP BY quote_id
-      ) items_subquery ON q.id = items_subquery.quote_id
-      LEFT JOIN (
-        SELECT quote_id,
-               jsonb_agg(
-                 jsonb_build_object(
-                   'id', id,
-                   'name', name,
-                   'content', content,
-                   'contentType', content_type,
-                   'size', size,
-                   'uploadedAt', uploaded_at
-                 )
-               ) as attachments
-        FROM quote_attachments
-        GROUP BY quote_id
-      ) attachments_subquery ON q.id = attachments_subquery.quote_id
-      ORDER BY q.created_at DESC
-    `);
-
-    const quotes = result.rows.map(row => ({
-      id: row.id,
-      quoteNumber: row.quote_number,
-      customerId: row.customer_id,
-      customerName: row.customer_name,
-      issueDate: row.issue_date,
-      validUntil: row.valid_until,
-      items: row.items || [],
-      attachments: row.attachments || [],
-      subtotal: parseFloat(row.subtotal),
-      taxAmount: parseFloat(row.tax_amount),
-      total: parseFloat(row.total),
-      status: row.status,
-      notes: row.notes,
-      globalDiscountType: row.global_discount_type,
-      globalDiscountValue: row.global_discount_value ? parseFloat(row.global_discount_value) : null,
-      globalDiscountAmount: row.global_discount_amount ? parseFloat(row.global_discount_amount) : null,
-      convertedToInvoiceId: row.converted_to_invoice_id,
-      createdAt: row.created_at
-    }));
-
+    const quotes = await findAllQuotes();
     res.json(quotes);
   } catch (error) {
-    logger.error('Failed to fetch quotes', {
-      error: error.message,
-      stack: error.stack,
-      method: 'GET',
-      endpoint: '/quotes'
-    });
+    logger.error('Failed to fetch quotes', { error: error.message, stack: error.stack });
     res.status(500).json({ error: 'Failed to fetch quotes' });
   }
 });
@@ -85,85 +19,11 @@ router.get('/', async (req, res) => {
 // Get quote by ID
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await query(`
-      SELECT q.*, 
-             COALESCE(items_subquery.items, '{}'::jsonb[]) as items,
-             COALESCE(attachments_subquery.attachments, '[]'::jsonb) as attachments
-      FROM quotes q
-      LEFT JOIN (
-        SELECT quote_id,
-               array_agg(
-                 jsonb_build_object(
-                   'id', id,
-                   'description', description,
-                   'quantity', quantity,
-                   'unitPrice', unit_price,
-                   'taxRate', tax_rate,
-                   'total', total,
-                   'order', item_order,
-                   'discountType', discount_type,
-                   'discountValue', discount_value,
-                   'discountAmount', discount_amount
-                 ) ORDER BY item_order
-               ) as items
-        FROM quote_items
-        WHERE quote_id = $1
-        GROUP BY quote_id
-      ) items_subquery ON q.id = items_subquery.quote_id
-      LEFT JOIN (
-        SELECT quote_id,
-               jsonb_agg(
-                 jsonb_build_object(
-                   'id', id,
-                   'name', name,
-                   'content', content,
-                   'contentType', content_type,
-                   'size', size,
-                   'uploadedAt', uploaded_at
-                 )
-               ) as attachments
-        FROM quote_attachments
-        WHERE quote_id = $1
-        GROUP BY quote_id
-      ) attachments_subquery ON q.id = attachments_subquery.quote_id
-      WHERE q.id = $1
-    `, [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Quote not found' });
-    }
-
-    const row = result.rows[0];
-    const quote = {
-      id: row.id,
-      quoteNumber: row.quote_number,
-      customerId: row.customer_id,
-      customerName: row.customer_name,
-      issueDate: row.issue_date,
-      validUntil: row.valid_until,
-      items: row.items || [],
-      attachments: row.attachments || [],
-      subtotal: parseFloat(row.subtotal),
-      taxAmount: parseFloat(row.tax_amount),
-      total: parseFloat(row.total),
-      status: row.status,
-      notes: row.notes,
-      globalDiscountType: row.global_discount_type,
-      globalDiscountValue: row.global_discount_value ? parseFloat(row.global_discount_value) : null,
-      globalDiscountAmount: row.global_discount_amount ? parseFloat(row.global_discount_amount) : null,
-      createdAt: row.created_at
-    };
-
+    const quote = await findQuoteById(req.params.id);
+    if (!quote) return res.status(404).json({ error: 'Quote not found' });
     res.json(quote);
   } catch (error) {
-    logger.error('Failed to fetch quote', {
-      error: error.message,
-      stack: error.stack,
-      quoteId: req.params.id,
-      method: 'GET',
-      endpoint: '/quotes/:id'
-    });
+    logger.error('Failed to fetch quote', { error: error.message, quoteId: req.params.id });
     res.status(500).json({ error: 'Failed to fetch quote' });
   }
 });

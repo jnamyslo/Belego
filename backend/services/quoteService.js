@@ -279,10 +279,6 @@ export async function deleteQuote(id) {
 }
 
 export async function convertQuoteToInvoice(id) {
-  // Generate invoice number before opening transaction (generateInvoiceNumber uses its own connection)
-  const issueDate = new Date().toISOString().split('T')[0];
-  const invoiceNumber = await generateInvoiceNumber(issueDate);
-
   const client = await pool.connect();
 
   try {
@@ -351,6 +347,10 @@ export async function convertQuoteToInvoice(id) {
       await client.query('ROLLBACK');
       return { error: 'Only accepted quotes can be converted to invoices', status: 400 };
     }
+
+    // Generate invoice number after all validation has passed
+    const issueDate = new Date().toISOString().split('T')[0];
+    const invoiceNumber = await generateInvoiceNumber(issueDate);
 
     // Create invoice
     const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];

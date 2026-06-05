@@ -471,12 +471,9 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
     company,
     getInvoiceTemplates,
     addInvoiceTemplate,
-    updateInvoiceTemplate,
     deleteInvoiceTemplate,
   } = useCompany();
   const {
-    getHourlyRatesForCustomer,
-    getMaterialTemplatesForCustomer,
     getCombinedHourlyRatesForCustomer,
     getCombinedMaterialTemplatesForCustomer,
   } = useDocumentHelpers();

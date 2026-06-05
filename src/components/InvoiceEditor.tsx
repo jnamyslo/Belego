@@ -20,7 +20,10 @@ import {
 import {
   CSS,
 } from '@dnd-kit/utilities';
-import { useApp } from '../context/AppContext';
+import { useInvoices } from '../context/InvoiceContext';
+import { useCustomers } from '../context/CustomerContext';
+import { useCompany } from '../context/CompanyContext';
+import { useDocumentHelpers } from '../hooks/useDocumentHelpers';
 import { Invoice, InvoiceItem, InvoiceAttachment } from '../types';
 import { AttachmentManager } from './AttachmentManager';
 import { calculateInvoiceWithDiscounts, updateItemWithDiscount, formatDiscountDisplay, validateDiscount } from '../utils/discountUtils';
@@ -53,7 +56,7 @@ function SortableInvoiceItem({
   isLast,
   isSmallBusiness 
 }: SortableInvoiceItemProps) {
-  const { company } = useApp();
+  const { company } = useCompany();
   const discountsEnabled = company.discountsEnabled !== false;
   const {
     attributes,
@@ -462,25 +465,23 @@ interface InvoiceEditorProps {
 }
 
 export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateToCustomers, onNavigateToSettings }: InvoiceEditorProps) {
-  const { 
-    customers, 
-    addInvoice, 
-    updateInvoice,
-    refreshInvoices, 
-    addCustomer,
+  const { customers, addCustomer, refreshCustomers } = useCustomers();
+  const { addInvoice, updateInvoice, refreshInvoices } = useInvoices();
+  const {
     company,
-    refreshCustomers,
     getInvoiceTemplates,
     addInvoiceTemplate,
     updateInvoiceTemplate,
     deleteInvoiceTemplate,
     getMaterialTemplates,
     getHourlyRates,
+  } = useCompany();
+  const {
     getHourlyRatesForCustomer,
     getMaterialTemplatesForCustomer,
     getCombinedHourlyRatesForCustomer,
-    getCombinedMaterialTemplatesForCustomer
-  } = useApp();
+    getCombinedMaterialTemplatesForCustomer,
+  } = useDocumentHelpers();
   const discountsEnabled = company.discountsEnabled !== false;
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [showInvoiceTemplateForm, setShowInvoiceTemplateForm] = useState(false);

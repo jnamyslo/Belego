@@ -1,5 +1,5 @@
-// Main App Context (backwards compatible)
-export { AppProvider, useApp } from './AppContext';
+// Main App Context
+export { AppProvider } from './AppContext';
 
 // Individual Contexts
 export { CustomerProvider, useCustomers, getHourlyRatesForCustomer, getMaterialTemplatesForCustomer, getCombinedHourlyRatesForCustomer, getCombinedMaterialTemplatesForCustomer } from './CustomerContext';

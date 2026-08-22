@@ -75,7 +75,10 @@ export async function findAllJobs() {
                    'hourlyRate', jte.hourly_rate,
                    'hourlyRateId', jte.hourly_rate_id,
                    'taxRate', jte.tax_rate,
-                   'total', jte.total
+                   'total', jte.total,
+                   'discountType', jte.discount_type,
+                   'discountValue', jte.discount_value,
+                   'discountAmount', jte.discount_amount
                  )
                ) FILTER (WHERE jte.id IS NOT NULL), '[]'::json
              ) as time_entries
@@ -114,7 +117,10 @@ export async function findJobById(id) {
                    'hourlyRate', jte.hourly_rate,
                    'hourlyRateId', jte.hourly_rate_id,
                    'taxRate', jte.tax_rate,
-                   'total', jte.total
+                   'total', jte.total,
+                   'discountType', jte.discount_type,
+                   'discountValue', jte.discount_value,
+                   'discountAmount', jte.discount_amount
                  )
                ) FILTER (WHERE jte.id IS NOT NULL), '[]'::json
              ) as time_entries

@@ -185,8 +185,8 @@ router.post('/', async (req, res) => {
     if (timeEntries && Array.isArray(timeEntries) && timeEntries.length > 0) {
       for (const timeEntry of timeEntries) {
         await client.query(`
-          INSERT INTO job_time_entries (job_id, description, start_time, end_time, hours_worked, hourly_rate, hourly_rate_id, tax_rate, total)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          INSERT INTO job_time_entries (job_id, description, start_time, end_time, hours_worked, hourly_rate, hourly_rate_id, tax_rate, total, discount_type, discount_value, discount_amount)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         `, [
           jobId,
           timeEntry.description || '',
@@ -196,7 +196,10 @@ router.post('/', async (req, res) => {
           timeEntry.hourlyRate || 0,
           timeEntry.hourlyRateId || null,
           timeEntry.taxRate != null ? timeEntry.taxRate : 19,
-          timeEntry.total || 0
+          timeEntry.total || 0,
+          timeEntry.discountType || null,
+          timeEntry.discountValue != null ? timeEntry.discountValue : null,
+          timeEntry.discountAmount != null ? timeEntry.discountAmount : null
         ]);
       }
     } else if (hoursWorked > 0 || startTime || endTime) {
@@ -253,7 +256,10 @@ router.post('/', async (req, res) => {
                    'hourlyRate', jte.hourly_rate,
                    'hourlyRateId', jte.hourly_rate_id,
                    'taxRate', jte.tax_rate,
-                   'total', jte.total
+                   'total', jte.total,
+                   'discountType', jte.discount_type,
+                   'discountValue', jte.discount_value,
+                   'discountAmount', jte.discount_amount
                  )
                ) FILTER (WHERE jte.id IS NOT NULL), '[]'::json
              ) as time_entries
@@ -449,8 +455,8 @@ router.put('/:id', async (req, res) => {
       if (Array.isArray(timeEntries) && timeEntries.length > 0) {
         for (const timeEntry of timeEntries) {
           await client.query(`
-            INSERT INTO job_time_entries (job_id, description, start_time, end_time, hours_worked, hourly_rate, hourly_rate_id, tax_rate, total)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            INSERT INTO job_time_entries (job_id, description, start_time, end_time, hours_worked, hourly_rate, hourly_rate_id, tax_rate, total, discount_type, discount_value, discount_amount)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           `, [
             id,
             timeEntry.description || '',
@@ -460,7 +466,10 @@ router.put('/:id', async (req, res) => {
             timeEntry.hourlyRate || 0,
             timeEntry.hourlyRateId || null,
             timeEntry.taxRate != null ? timeEntry.taxRate : 19,
-            timeEntry.total || 0
+            timeEntry.total || 0,
+            timeEntry.discountType || null,
+            timeEntry.discountValue != null ? timeEntry.discountValue : null,
+            timeEntry.discountAmount != null ? timeEntry.discountAmount : null
           ]);
         }
       }
@@ -506,7 +515,10 @@ router.put('/:id', async (req, res) => {
                  'hoursWorked', jte.hours_worked,
                  'hourlyRate', jte.hourly_rate,
                  'hourlyRateId', jte.hourly_rate_id,
-                 'total', jte.total
+                 'total', jte.total,
+                 'discountType', jte.discount_type,
+                 'discountValue', jte.discount_value,
+                 'discountAmount', jte.discount_amount
                )
              ) FILTER (WHERE jte.id IS NOT NULL) as time_entries
       FROM job_entries j
@@ -723,7 +735,10 @@ router.post('/:id/signature', async (req, res) => {
                  'hourlyRate', jte.hourly_rate,
                  'hourlyRateId', jte.hourly_rate_id,
                  'taxRate', jte.tax_rate,
-                 'total', jte.total
+                 'total', jte.total,
+                 'discountType', jte.discount_type,
+                 'discountValue', jte.discount_value,
+                 'discountAmount', jte.discount_amount
                )
              ) FILTER (WHERE jte.id IS NOT NULL) as time_entries
       FROM job_entries j

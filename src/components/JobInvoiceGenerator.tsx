@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import logger from '../utils/logger';
 import { X, FileText, Calendar, Users, Check, AlertTriangle } from 'lucide-react';
-import { JobEntry, Customer, InvoiceAttachment } from '../types';
+import { JobEntry, Customer, InvoiceAttachment, InvoiceItem } from '../types';
 import { useCustomers } from '../context/CustomerContext';
 import { useInvoices } from '../context/InvoiceContext';
 import { useJobs } from '../context/JobContext';
 import { useCompany } from '../context/CompanyContext';
 import { generateJobPDF } from '../utils/pdfGenerator';
 import { generateUUID } from '../utils/uuid';
+import { buildInvoiceFromJobs } from '../utils/jobInvoiceItems';
 
 interface JobInvoiceGeneratorProps {
   selectedJobIds: string[];
@@ -167,77 +168,10 @@ export function JobInvoiceGenerator({
     const customer = customers.find((c: Customer) => c.id === jobsToInvoice[0].customerId);
     if (!customer) return;
 
-    const items = [];
-
-    // Add job items
-    let itemOrder = 1;
-    for (const job of jobsToInvoice) {
-      // Check if job has multiple time entries
-      if (job.timeEntries && job.timeEntries.length > 0) {
-        // Add each time entry as separate line item
-        job.timeEntries.forEach(timeEntry => {
-          // Bei Kleinunternehmerregelung immer 0% MwSt., sonst den gespeicherten Wert oder 19% als Fallback
-          const taxRate = company?.isSmallBusiness ? 0 : (timeEntry.taxRate != null ? timeEntry.taxRate : 19);
-          
-          items.push({
-            id: `time-entry-${timeEntry.id}`,
-            description: `${job.title} - ${timeEntry.description}`,
-            quantity: timeEntry.hoursWorked,
-            unitPrice: timeEntry.hourlyRate,
-            taxRate: taxRate,
-            total: timeEntry.total,
-            jobNumber: job.jobNumber,
-            externalJobNumber: job.externalJobNumber,
-            order: itemOrder++
-          });
-        });
-      } else if (job.hoursWorked > 0) {
-        // Only add legacy entry if there are actual hours worked and no time entries
-        // Bei Kleinunternehmerregelung immer 0% MwSt., sonst den gespeicherten Wert oder 19% als Fallback
-        const taxRate = company?.isSmallBusiness ? 0 : (job.taxRate != null ? job.taxRate : 19);
-        
-        items.push({
-          id: `job-${job.id}`,
-          description: `${job.title} - ${job.description}`,
-          quantity: job.hoursWorked,
-          unitPrice: job.hourlyRate,
-          taxRate: taxRate,
-          total: job.hoursWorked * job.hourlyRate,
-          jobNumber: job.jobNumber,
-          externalJobNumber: job.externalJobNumber,
-          order: itemOrder++
-        });
-      }
-
-      // Add materials if any
-      if (job.materials && job.materials.length > 0) {
-        job.materials.forEach(material => {
-          // Bei Kleinunternehmerregelung immer 0% MwSt., sonst den gespeicherten Wert oder 19% als Fallback
-          const taxRate = company?.isSmallBusiness ? 0 : (material.taxRate != null ? material.taxRate : 19);
-          
-          items.push({
-            id: `material-${material.id}`,
-            description: `${job.title} - ${material.description}`,
-            quantity: material.quantity,
-            unitPrice: material.unitPrice,
-            taxRate: taxRate,
-            total: material.total,
-            jobNumber: job.jobNumber,
-            externalJobNumber: job.externalJobNumber,
-            order: itemOrder++
-          });
-        });
-      }
-    }
-
-    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    const taxAmount = items.reduce((sum, item) => {
-      const itemTotal = item.quantity * item.unitPrice;
-      // Bei Kleinunternehmerregelung ist die Steuer immer 0
-      const effectiveTaxRate = company?.isSmallBusiness ? 0 : item.taxRate;
-      return sum + (itemTotal * (effectiveTaxRate / 100));
-    }, 0);
-    const total = subtotal + taxAmount;
+    const { items: pricedItems, subtotal, taxAmount, total } = buildInvoiceFromJobs(
+      jobsToInvoice,
+      company?.isSmallBusiness
+    );
 
     let issueDate = new Date();
     
@@ -352,7 +286,7 @@ export function JobInvoiceGenerator({
       customerName: customer.name,
       issueDate: issueDate,
       dueDate: dueDate,
-      items,
+      items: pricedItems,
       subtotal,
       taxAmount,
       total,

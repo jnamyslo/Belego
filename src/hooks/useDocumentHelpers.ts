@@ -6,14 +6,16 @@ import {
   getMaterialTemplatesForCustomer,
 } from '../context/CustomerContext';
 import { useCompany } from '../context/CompanyContext';
-import { useInvoices } from '../context/InvoiceContext';
-import { useJobs, generateInvoiceFromJobs } from '../context/JobContext';
 
+/**
+ * Bindet die Stundensatz-/Material-Auflösung an die Contexts, aus denen sie ihre
+ * Daten zieht: die Logik liegt im CustomerContext, die Firmenvorlagen und das
+ * Flag `showCombinedDropdowns` im CompanyContext. Aufrufer brauchen dadurch nur
+ * die Kunden-ID zu übergeben.
+ */
 export function useDocumentHelpers() {
   const { customers } = useCustomers();
   const companyCtx = useCompany();
-  const { addInvoice } = useInvoices();
-  const { jobEntries, updateJobEntry } = useJobs();
 
   return {
     getHourlyRatesForCustomer: (customerId?: string) =>
@@ -37,22 +39,5 @@ export function useDocumentHelpers() {
         companyCtx.company.showCombinedDropdowns ?? false,
         customerId
       ),
-
-    generateInvoiceFromJobs: async (
-      jobIds: string[],
-      type: 'single' | 'daily' | 'monthly',
-      date?: Date
-    ) => {
-      await generateInvoiceFromJobs(
-        jobIds,
-        type,
-        jobEntries,
-        customers,
-        companyCtx.company,
-        addInvoice,
-        updateJobEntry,
-        date
-      );
-    },
   };
 }

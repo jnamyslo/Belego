@@ -8,7 +8,8 @@ import { Invoice } from '../../types';
 import { PDFOptions } from '../pdfGenerator';
 import logger from '../logger';
 import { escapeXML, formatAmountForXML, roundToCents, getCountryCode } from './xmlUtils';
-import { calculateTaxBreakdown, hasOnlyZeroTaxRate, getTaxCategoryCode, getTaxExemptionReason } from './taxCalculations';
+import { hasOnlyZeroTaxRate, getTaxCategoryCode, getTaxExemptionReason } from './taxCalculations';
+import { calculateInvoiceWithDiscounts } from '../discountUtils';
 
 /**
  * Generate ZUGFeRD XML string
@@ -21,8 +22,13 @@ export function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): strin
   const paymentInfo = options.company.paymentInformation;
 
   // Tax breakdown (sorted by rate), shared between header total and per-rate tax groups.
-  const taxBreakdownEntries = Object.entries(calculateTaxBreakdown(invoice.items, invoice))
-    .sort(([rateA], [rateB]) => Number(rateA) - Number(rateB));
+  const taxBreakdownEntries = Object.entries(
+    calculateInvoiceWithDiscounts(
+      invoice.items,
+      { type: invoice.globalDiscountType, value: invoice.globalDiscountValue },
+      options.company.isSmallBusiness
+    ).taxBreakdown
+  ).sort(([rateA], [rateB]) => Number(rateA) - Number(rateB));
   // BR-CO-14: header tax = sum of the already-rounded per-category amounts.
   const headerTaxAmount = taxBreakdownEntries.reduce((sum, [, breakdown]) => sum + roundToCents(breakdown.taxAmount), 0);
 

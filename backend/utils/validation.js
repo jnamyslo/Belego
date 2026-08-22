@@ -105,8 +105,11 @@ export function validateSchema(data, schema) {
       continue;
     }
 
-    // Skip further validation if value is optional and not provided
-    if (value === undefined || value === null) {
+    // Skip further validation if value is optional and not provided.
+    // Ein leerer String zählt hier als "nicht angegeben": Pflichtfelder haben ''
+    // bereits oben abgelehnt, ein '' an dieser Stelle stammt also immer aus einem
+    // optionalen Feld (z.B. leeres E-Mail-Feld im Kundenformular).
+    if (value === undefined || value === null || value === '') {
       continue;
     }
 

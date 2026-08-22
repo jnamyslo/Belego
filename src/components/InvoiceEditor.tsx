@@ -797,66 +797,11 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
   };
 
   const calculateTotals = () => {
-    // Bei Kleinunternehmerregelung MwSt. für alle Positionen auf 0 normalisieren,
-    // unabhängig vom gespeicherten taxRate-Wert (z.B. bei geladenen Bestandspositionen)
-    const normalizedItems = company?.isSmallBusiness
-      ? items.map(item => ({ ...item, taxRate: 0 }))
-      : items;
-
-    // Verwende die neue Rabattberechnungsfunktion
-    const invoiceData = {
-      items: normalizedItems,
-      globalDiscountType: formData.globalDiscountType,
-      globalDiscountValue: formData.globalDiscountValue,
-      globalDiscountAmount: formData.globalDiscountAmount
-    };
-
-    const calculation = calculateInvoiceWithDiscounts(invoiceData);
-
-    // Group items by tax rate for breakdown display
-    const taxBreakdown = normalizedItems.reduce((acc, item) => {
-      const itemTotal = (item.quantity * item.unitPrice) - (item.discountAmount || 0);
-      const taxRate = item.taxRate;
-      const taxAmount = itemTotal * (taxRate / 100);
-      
-      if (acc[taxRate]) {
-        acc[taxRate].taxableAmount += itemTotal;
-        acc[taxRate].taxAmount += taxAmount;
-      } else {
-        acc[taxRate] = {
-          taxableAmount: itemTotal,
-          taxAmount: taxAmount
-        };
-      }
-      
-      return acc;
-    }, {} as Record<number, { taxableAmount: number; taxAmount: number }>);
-    
-    // Adjust tax breakdown for global discount
-    if (calculation.globalDiscountAmount > 0 && calculation.subtotal > 0) {
-      const discountRatio = calculation.globalDiscountAmount / (calculation.subtotal - calculation.itemDiscountAmount);
-      Object.keys(taxBreakdown).forEach(taxRateStr => {
-        const taxRate = Number(taxRateStr);
-        const breakdown = taxBreakdown[taxRate];
-        breakdown.taxableAmount *= (1 - discountRatio);
-        breakdown.taxAmount = (breakdown.taxableAmount * taxRate) / 100;
-      });
-    }
-    
-    // Check if invoice has only 0% tax rate
-    const hasOnlyZeroTax = normalizedItems.length > 0 && normalizedItems.every(item => item.taxRate === 0);
-    
-    return { 
-      subtotal: calculation.subtotal,
-      itemDiscountAmount: calculation.itemDiscountAmount,
-      globalDiscountAmount: calculation.globalDiscountAmount,
-      totalDiscountAmount: calculation.totalDiscountAmount,
-      discountedSubtotal: calculation.discountedSubtotal,
-      taxAmount: calculation.taxAmount, 
-      taxBreakdown, 
-      total: calculation.total, 
-      hasOnlyZeroTax 
-    };
+    return calculateInvoiceWithDiscounts(
+      items,
+      { type: formData.globalDiscountType, value: formData.globalDiscountValue },
+      company?.isSmallBusiness
+    );
   };
 
   const handlePreview = (attachments: (InvoiceAttachment)[], initialIndex: number) => {

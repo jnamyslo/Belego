@@ -701,21 +701,11 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
   };
 
   const calculateTotals = () => {
-    const result = calculateInvoiceWithDiscounts({
-      items: items as any,
-      globalDiscountType: globalDiscountType || undefined,
-      globalDiscountValue: globalDiscountValue ? parseFloat(globalDiscountValue) : undefined
-    } as any);
-
-    return {
-      subtotal: result.subtotal,
-      itemDiscountAmount: result.itemDiscountAmount,
-      globalDiscountAmount: result.globalDiscountAmount,
-      totalDiscountAmount: result.totalDiscountAmount,
-      discountedSubtotal: result.discountedSubtotal,
-      taxAmount: result.taxAmount,
-      total: result.total
-    };
+    return calculateInvoiceWithDiscounts(
+      items,
+      { type: globalDiscountType || undefined, value: globalDiscountValue ? parseFloat(globalDiscountValue) : undefined },
+      company?.isSmallBusiness
+    );
   };
 
   const handlePreview = (attachments: (QuoteAttachment)[], initialIndex: number) => {

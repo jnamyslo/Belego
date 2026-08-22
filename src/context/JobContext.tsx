@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useMemo, React
 import { JobEntry, Customer, Company, Invoice } from '../types';
 import { apiService } from '../services/api';
 import { generateUUID } from '../utils/uuid';
+import { calculateInvoiceWithDiscounts } from '../utils/discountUtils';
 import logger from '../utils/logger';
 
 // ============================================================================
@@ -182,6 +183,8 @@ export async function generateInvoiceFromJobs(
             quantity: timeEntry.hoursWorked,
             unitPrice: timeEntry.hourlyRate,
             taxRate: timeEntry.taxRate != null ? timeEntry.taxRate : 19,
+            discountType: timeEntry.discountType,
+            discountValue: timeEntry.discountValue,
             total: timeEntry.total,
             order: itemOrder++,
           });
@@ -210,6 +213,8 @@ export async function generateInvoiceFromJobs(
             quantity: material.quantity,
             unitPrice: material.unitPrice,
             taxRate: material.taxRate != null ? material.taxRate : 19,
+            discountType: material.discountType,
+            discountValue: material.discountValue,
             total: material.total,
             order: itemOrder++,
           });
@@ -217,12 +222,7 @@ export async function generateInvoiceFromJobs(
       }
     });
 
-    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    const taxAmount = items.reduce((sum, item) => {
-      const itemTotal = item.quantity * item.unitPrice;
-      return sum + (itemTotal * (item.taxRate / 100));
-    }, 0);
-    const total = subtotal + taxAmount;
+    const { subtotal, taxAmount, total } = calculateInvoiceWithDiscounts(items, {}, company.isSmallBusiness);
 
     // Generate invoice title
     let invoiceTitle = '';

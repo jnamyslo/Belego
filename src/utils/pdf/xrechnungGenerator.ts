@@ -6,7 +6,8 @@
 import { Invoice } from '../../types';
 import { PDFOptions } from '../pdfGenerator';
 import { escapeXML, formatAmountForXML, roundToCents, getCountryCode } from './xmlUtils';
-import { calculateTaxBreakdown, hasOnlyZeroTaxRate, getTaxCategoryCode, getTaxExemptionReason } from './taxCalculations';
+import { hasOnlyZeroTaxRate, getTaxCategoryCode, getTaxExemptionReason } from './taxCalculations';
+import { calculateInvoiceWithDiscounts } from '../discountUtils';
 
 /**
  * Generate XRechnung XML as a Blob
@@ -19,8 +20,13 @@ export function generateXRechnungXML(invoice: Invoice, options: PDFOptions): Pro
   const paymentInfo = options.company.paymentInformation;
 
   // Tax breakdown (sorted by rate) shared between the header total and the subtotals.
-  const taxBreakdownEntries = Object.entries(calculateTaxBreakdown(invoice.items, invoice))
-    .sort(([rateA], [rateB]) => Number(rateA) - Number(rateB));
+  const taxBreakdownEntries = Object.entries(
+    calculateInvoiceWithDiscounts(
+      invoice.items,
+      { type: invoice.globalDiscountType, value: invoice.globalDiscountValue },
+      options.company.isSmallBusiness
+    ).taxBreakdown
+  ).sort(([rateA], [rateB]) => Number(rateA) - Number(rateB));
   // BR-CO-14: derive the header tax amount from the sum of the already-rounded per-category amounts.
   const headerTaxAmount = taxBreakdownEntries.reduce((sum, [, breakdown]) => sum + roundToCents(breakdown.taxAmount), 0);
 

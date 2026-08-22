@@ -1,4 +1,24 @@
-import { InvoiceItem, Invoice, JobMaterial, JobTimeEntry } from '../types';
+import { InvoiceItem, JobMaterial, JobTimeEntry, DiscountType } from '../types';
+
+export interface TaxBreakdown {
+  [taxRate: number]: {
+    taxableAmount: number;
+    taxAmount: number;
+  };
+}
+
+export interface InvoiceLineItemInput {
+  quantity: number;
+  unitPrice: number;
+  taxRate: number;
+  discountType?: DiscountType;
+  discountValue?: number;
+}
+
+export interface GlobalDiscountInput {
+  type?: DiscountType;
+  value?: number;
+}
 
 export interface DiscountCalculation {
   subtotal: number;
@@ -7,6 +27,8 @@ export interface DiscountCalculation {
   totalDiscountAmount: number;
   discountedSubtotal: number;
   taxAmount: number;
+  taxBreakdown: TaxBreakdown;
+  hasOnlyZeroTax: boolean;
   total: number;
 }
 
@@ -62,19 +84,27 @@ export function calculateGlobalDiscount(
 }
 
 /**
- * Berechnet alle Rabatte und Gesamtsummen für eine Rechnung
+ * Berechnet alle Rabatte und Gesamtsummen für eine Rechnung/ein Angebot.
+ * Bei Kleinunternehmerregelung wird der Steuersatz aller Positionen intern auf 0
+ * normalisiert, unabhängig vom gespeicherten taxRate-Wert der Position.
  */
-export function calculateInvoiceWithDiscounts(invoice: Partial<Invoice>): DiscountCalculation {
-  const items = invoice.items || [];
-  
+export function calculateInvoiceWithDiscounts(
+  items: InvoiceLineItemInput[],
+  globalDiscount: GlobalDiscountInput = {},
+  isSmallBusiness = false
+): DiscountCalculation {
+  const normalizedItems = isSmallBusiness
+    ? items.map(item => ({ ...item, taxRate: 0 }))
+    : items;
+
   // Berechne Zwischensumme und Artikelrabatte
   let subtotal = 0;
   let itemDiscountAmount = 0;
-  
-  // Gruppiere Items nach Steuersatz für die Steuerberechnung
-  const taxBreakdown: Record<number, { taxableAmount: number; taxAmount: number }> = {};
 
-  items.forEach(item => {
+  // Gruppiere Items nach Steuersatz für die Steuerberechnung
+  const taxBreakdown: TaxBreakdown = {};
+
+  normalizedItems.forEach(item => {
     const itemTotal = item.quantity * item.unitPrice;
     const discount = calculateItemDiscount(
       item.quantity,
@@ -82,15 +112,15 @@ export function calculateInvoiceWithDiscounts(invoice: Partial<Invoice>): Discou
       item.discountType,
       item.discountValue
     );
-    
+
     subtotal += itemTotal;
     itemDiscountAmount += discount;
-    
+
     // Berechne steuerpflichtigen Betrag nach Artikelrabatt
     const taxableItemAmount = itemTotal - discount;
     const taxRate = item.taxRate || 0;
     const itemTaxAmount = (taxableItemAmount * taxRate) / 100;
-    
+
     if (taxBreakdown[taxRate]) {
       taxBreakdown[taxRate].taxableAmount += taxableItemAmount;
       taxBreakdown[taxRate].taxAmount += itemTaxAmount;
@@ -108,8 +138,8 @@ export function calculateInvoiceWithDiscounts(invoice: Partial<Invoice>): Discou
   // Berechne Gesamtrabatt (wird auf die bereits rabattierte Zwischensumme angewendet)
   const globalDiscountAmount = calculateGlobalDiscount(
     subtotalAfterItemDiscounts,
-    invoice.globalDiscountType,
-    invoice.globalDiscountValue
+    globalDiscount.type,
+    globalDiscount.value
   );
 
   // Endgültige Zwischensumme nach allen Rabatten
@@ -118,19 +148,19 @@ export function calculateInvoiceWithDiscounts(invoice: Partial<Invoice>): Discou
   // Neuberechnung der Steuern basierend auf dem Gesamtrabatt
   // Der Gesamtrabatt wird proportional auf alle Steuersätze verteilt
   let totalTaxAmount = 0;
-  
+
   if (globalDiscountAmount > 0 && subtotalAfterItemDiscounts > 0) {
     // Proportionale Verteilung des Gesamtrabatts
     const discountRatio = globalDiscountAmount / subtotalAfterItemDiscounts;
-    
+
     Object.keys(taxBreakdown).forEach(taxRateStr => {
       const taxRate = Number(taxRateStr);
       const breakdown = taxBreakdown[taxRate];
-      
+
       // Reduziere den steuerpflichtigen Betrag proportional
       const reducedTaxableAmount = breakdown.taxableAmount * (1 - discountRatio);
       const reducedTaxAmount = (reducedTaxableAmount * taxRate) / 100;
-      
+
       breakdown.taxableAmount = reducedTaxableAmount;
       breakdown.taxAmount = reducedTaxAmount;
       totalTaxAmount += reducedTaxAmount;
@@ -142,6 +172,7 @@ export function calculateInvoiceWithDiscounts(invoice: Partial<Invoice>): Discou
 
   const total = discountedSubtotal + totalTaxAmount;
   const totalDiscountAmount = itemDiscountAmount + globalDiscountAmount;
+  const hasOnlyZeroTax = normalizedItems.length > 0 && normalizedItems.every(item => item.taxRate === 0);
 
   return {
     subtotal,
@@ -150,6 +181,8 @@ export function calculateInvoiceWithDiscounts(invoice: Partial<Invoice>): Discou
     totalDiscountAmount,
     discountedSubtotal,
     taxAmount: totalTaxAmount,
+    taxBreakdown,
+    hasOnlyZeroTax,
     total
   };
 }

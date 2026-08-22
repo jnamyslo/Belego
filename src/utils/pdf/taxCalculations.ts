@@ -3,67 +3,7 @@
  */
 
 import { Invoice, JobEntry } from '../../types';
-
-export interface TaxBreakdown {
-  [taxRate: number]: {
-    taxableAmount: number;
-    taxAmount: number;
-  };
-}
-
-/**
- * Calculate tax breakdown by rate for invoice items
- * @param items - Invoice items
- * @param invoice - Optional invoice object for global discount
- * @returns Tax breakdown by rate
- */
-export function calculateTaxBreakdown(items: Invoice['items'], invoice?: Partial<Invoice>): TaxBreakdown {
-  const taxBreakdown = items.reduce((acc, item) => {
-    // Berechne den Artikelpreis NACH Artikelrabatt
-    const itemTotal = item.quantity * item.unitPrice;
-    const itemDiscountAmount = item.discountAmount || 0;
-    const itemTotalAfterDiscount = itemTotal - itemDiscountAmount;
-    
-    const taxRate = item.taxRate;
-    const taxAmount = itemTotalAfterDiscount * (taxRate / 100);
-    
-    if (acc[taxRate]) {
-      acc[taxRate].taxableAmount += itemTotalAfterDiscount;
-      acc[taxRate].taxAmount += taxAmount;
-    } else {
-      acc[taxRate] = {
-        taxableAmount: itemTotalAfterDiscount,
-        taxAmount: taxAmount
-      };
-    }
-    
-    return acc;
-  }, {} as TaxBreakdown);
-  
-  // Wende globalen Rabatt proportional auf alle Steuersätze an
-  if (invoice?.globalDiscountAmount && invoice.globalDiscountAmount > 0) {
-    const subtotalAfterItemDiscounts = items.reduce((sum, item) => {
-      const itemTotal = item.quantity * item.unitPrice;
-      const itemDiscountAmount = item.discountAmount || 0;
-      return sum + (itemTotal - itemDiscountAmount);
-    }, 0);
-    
-    if (subtotalAfterItemDiscounts > 0) {
-      const discountRatio = invoice.globalDiscountAmount / subtotalAfterItemDiscounts;
-      
-      Object.keys(taxBreakdown).forEach(taxRateStr => {
-        const taxRate = Number(taxRateStr);
-        const breakdown = taxBreakdown[taxRate];
-        
-        // Reduziere den steuerpflichtigen Betrag proportional
-        breakdown.taxableAmount = breakdown.taxableAmount * (1 - discountRatio);
-        breakdown.taxAmount = (breakdown.taxableAmount * taxRate) / 100;
-      });
-    }
-  }
-  
-  return taxBreakdown;
-}
+import { TaxBreakdown } from '../discountUtils';
 
 /**
  * Calculate tax breakdown for job entries

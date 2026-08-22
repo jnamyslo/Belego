@@ -11,11 +11,11 @@ import { formatCurrency } from './formatters';
 // Import modular components
 import { getColorConfiguration } from './pdf/colorUtils';
 import {
-  calculateTaxBreakdown,
   calculateJobTaxBreakdown,
   checkHasDiscounts,
   hasOnlyZeroTaxRate
 } from './pdf/taxCalculations';
+import { calculateInvoiceWithDiscounts } from './discountUtils';
 // loadImage is now used internally by addPDFHeader
 import {
   addPDFHeader,
@@ -232,7 +232,11 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
   yPosition += 10;
 
   // === TOTALS SECTION ===
-  const taxBreakdownData = calculateTaxBreakdown(invoice.items, invoice);
+  const taxBreakdownData = calculateInvoiceWithDiscounts(
+    invoice.items,
+    { type: invoice.globalDiscountType, value: invoice.globalDiscountValue },
+    options.company.isSmallBusiness
+  ).taxBreakdown;
   const numberOfTaxRates = Object.keys(taxBreakdownData).filter(rate => Number(rate) > 0).length;
   const showTotalTaxLine = numberOfTaxRates > 1;
   
@@ -1030,7 +1034,11 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
   yPosition += 10;
 
   // === TOTALS ===
-  const taxBreakdownData = calculateTaxBreakdown(quote.items);
+  const taxBreakdownData = calculateInvoiceWithDiscounts(
+    quote.items,
+    { type: quote.globalDiscountType, value: quote.globalDiscountValue },
+    options.company.isSmallBusiness
+  ).taxBreakdown;
   const numberOfTaxRates = Object.keys(taxBreakdownData).filter(rate => Number(rate) > 0).length;
   const showTotalTaxLine = numberOfTaxRates > 1;
   

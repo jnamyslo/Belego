@@ -91,7 +91,12 @@ export function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): strin
 	</rsm:ExchangedDocument>
   
 	<rsm:SupplyChainTradeTransaction>
-		${invoice.items.map((item, index) => `<ram:IncludedSupplyChainTradeLineItem>
+		${invoice.items.map((item, index) => {
+    // Bei Kleinunternehmerregelung denselben normalisierten Satz verwenden wie
+    // die Kopf-Aufschlüsselung — sonst meldet die Position S/19%, während der
+    // Kopf nur eine E/0%-Gruppe führt (Validator lehnt ab, BR-S-05).
+    const effectiveTaxRate = options.company.isSmallBusiness ? 0 : item.taxRate;
+    return `<ram:IncludedSupplyChainTradeLineItem>
 			<ram:AssociatedDocumentLineDocument>
 				<ram:LineID>${index + 1}</ram:LineID>
 			</ram:AssociatedDocumentLineDocument>
@@ -112,8 +117,8 @@ export function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): strin
 			<ram:SpecifiedLineTradeSettlement>
 				<ram:ApplicableTradeTax>
 					<ram:TypeCode>VAT</ram:TypeCode>
-					<ram:CategoryCode>${getTaxCategoryCode(item.taxRate, options.company.isSmallBusiness)}</ram:CategoryCode>
-					<ram:RateApplicablePercent>${item.taxRate}</ram:RateApplicablePercent>
+					<ram:CategoryCode>${getTaxCategoryCode(effectiveTaxRate, options.company.isSmallBusiness)}</ram:CategoryCode>
+					<ram:RateApplicablePercent>${effectiveTaxRate}</ram:RateApplicablePercent>
 				</ram:ApplicableTradeTax>${(item.discountAmount || 0) > 0 ? `
 				<ram:SpecifiedTradeAllowanceCharge>
 					<ram:ChargeIndicator>
@@ -126,7 +131,8 @@ export function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): strin
 					<ram:LineTotalAmount>${formatAmountForXML((item.quantity * item.unitPrice) - (item.discountAmount || 0))}</ram:LineTotalAmount>
 				</ram:SpecifiedTradeSettlementLineMonetarySummation>
 			</ram:SpecifiedLineTradeSettlement>
-		</ram:IncludedSupplyChainTradeLineItem>`).join('')}
+		</ram:IncludedSupplyChainTradeLineItem>`;
+  }).join('')}
 		<ram:ApplicableHeaderTradeAgreement>
 			<ram:BuyerReference>${options.customer.customerNumber || '0010'}</ram:BuyerReference>
 			<ram:SellerTradeParty>

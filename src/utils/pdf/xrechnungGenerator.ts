@@ -196,7 +196,13 @@ export function generateXRechnungXML(invoice: Invoice, options: PDFOptions): Pro
     <cbc:PayableAmount currencyID="EUR">${formatAmountForXML(invoice.total)}</cbc:PayableAmount>
   </cac:LegalMonetaryTotal>
   
-  ${invoice.items.map((item, index) => `
+  ${invoice.items.map((item, index) => {
+    // Bei Kleinunternehmerregelung denselben normalisierten Satz verwenden wie
+    // die Kopf-Aufschlüsselung. Sonst meldet die Position S/19% während der Kopf
+    // nur eine E/0%-Gruppe führt — der Validator lehnt das ab (BR-S-05). Tritt
+    // bei Altrechnungen auf, deren Positionen noch 19% gespeichert haben.
+    const effectiveTaxRate = options.company.isSmallBusiness ? 0 : item.taxRate;
+    return `
   <cac:InvoiceLine>
     <cbc:ID>${index + 1}</cbc:ID>
     <cbc:InvoicedQuantity unitCode="C62">${formatAmountForXML(item.quantity)}</cbc:InvoicedQuantity>
@@ -213,8 +219,8 @@ export function generateXRechnungXML(invoice: Invoice, options: PDFOptions): Pro
         <cbc:ID>ITEM-${index + 1}</cbc:ID>
       </cac:SellersItemIdentification>
       <cac:ClassifiedTaxCategory>
-        <cbc:ID>${getTaxCategoryCode(item.taxRate, options.company.isSmallBusiness)}</cbc:ID>
-        <cbc:Percent>${item.taxRate}</cbc:Percent>
+        <cbc:ID>${getTaxCategoryCode(effectiveTaxRate, options.company.isSmallBusiness)}</cbc:ID>
+        <cbc:Percent>${effectiveTaxRate}</cbc:Percent>
         <cac:TaxScheme>
           <cbc:ID>VAT</cbc:ID>
         </cac:TaxScheme>
@@ -224,7 +230,8 @@ export function generateXRechnungXML(invoice: Invoice, options: PDFOptions): Pro
       <cbc:PriceAmount currencyID="EUR">${formatAmountForXML(item.unitPrice)}</cbc:PriceAmount>
       <cbc:BaseQuantity unitCode="C62">1.00</cbc:BaseQuantity>
     </cac:Price>
-  </cac:InvoiceLine>`).join('')}
+  </cac:InvoiceLine>`;
+  }).join('')}
 </ubl:Invoice>`;
 
   const blob = new Blob([xmlContent], { type: 'application/xml' });

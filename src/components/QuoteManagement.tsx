@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import logger from '../utils/logger';
 import { Plus, Edit, Trash2, Search, Download, FileText, Send, Check, Eye, FileCheck, Mail, X, CheckCircle } from 'lucide-react';
 import { useCustomers } from '../context/CustomerContext';
 import { useInvoices } from '../context/InvoiceContext';
+import { useQuotes } from '../context/QuoteContext';
 import { useCompany } from '../context/CompanyContext';
 import { Quote } from '../types';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -21,7 +22,8 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
   const { customers } = useCustomers();
   const { refreshInvoices } = useInvoices();
   const { company } = useCompany();
-  const [quotes, setQuotes] = useState<Quote[]>([]);
+  // Angebote kommen aus dem QuoteContext — kein zweiter, eigener Datenbestand.
+  const { quotes, updateQuote, deleteQuote, refreshQuotes } = useQuotes();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedQuoteIds, setSelectedQuoteIds] = useState<string[]>([]);
@@ -63,56 +65,55 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
     onConfirm: () => {},
   });
 
-  // Load quotes
-  const loadQuotes = async () => {
-    try {
-      const loadedQuotes = await apiService.getQuotes();
-      setQuotes(loadedQuotes);
-    } catch (error) {
-      logger.error('Error loading quotes:', error);
-    }
-  };
-
+  // Beim Öffnen der Seite neu laden: der globale DataLoader lädt nur einmal
+  // beim App-Start.
   useEffect(() => {
-    loadQuotes();
+    refreshQuotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Bereits angestoßene "abgelaufen"-Updates. Der Effect hängt an `quotes` und
+  // kann erneut laufen, bevor ein PUT durch ist (z.B. weil der globale
+  // DataLoader und refreshQuotes beide den Context befüllen) — ohne diese
+  // Sperre würde dasselbe Angebot mehrfach geschrieben.
+  const expiringQuoteIds = useRef<Set<string>>(new Set());
 
   // Check for expired quotes automatically
   useEffect(() => {
     const checkExpiredQuotes = async () => {
       if (quotes.length === 0) return;
-      
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const expiredUpdates = quotes
         .filter(quote => {
           if (quote.status !== 'sent') return false;
-          
+          if (expiringQuoteIds.current.has(quote.id)) return false;
+
           const validUntil = new Date(quote.validUntil);
           validUntil.setHours(0, 0, 0, 0);
-          
+
           return validUntil < today;
         })
         .map(quote => quote.id);
-      
+
       for (const quoteId of expiredUpdates) {
+        expiringQuoteIds.current.add(quoteId);
         try {
-          await apiService.updateQuote(quoteId, { status: 'expired' });
+          await updateQuote(quoteId, { status: 'expired' });
         } catch (error) {
-          logger.error('Error updating quote to expired:', error);
+          logger.error('Error updating quote to expired', { error, quoteId });
+          // Bei Fehlschlag Sperre lösen, damit ein späterer Versuch möglich ist.
+          expiringQuoteIds.current.delete(quoteId);
         }
-      }
-      
-      if (expiredUpdates.length > 0) {
-        await loadQuotes();
       }
     };
 
     if (quotes.length > 0) {
       checkExpiredQuotes();
     }
-  }, [quotes]);
+  }, [quotes, updateQuote]);
 
   const filteredQuotes = quotes.filter(quote => {
     const quoteNumber = quote.quoteNumber || '';
@@ -163,10 +164,10 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
         message: `Dieses Angebot wurde bereits ${statusText}. Das Löschen ${statusText}er Angebote kann die GoBD-Konformität verletzen und ist rechtlich problematisch. Sind Sie sicher, dass Sie fortfahren möchten?`,
         onConfirm: async () => {
           try {
-            await apiService.deleteQuote(quote.id);
-            await loadQuotes();
+            await deleteQuote(quote.id);
           } catch (error) {
-            logger.error('Error deleting quote:', error);
+            logger.error('Error deleting quote', { error });
+            alert('Fehler beim Löschen des Angebots. Bitte versuchen Sie es erneut.');
           }
         },
         isDestructive: true,
@@ -179,10 +180,10 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
         message: 'Dieses Angebot wurde bereits versendet. Sind Sie sicher, dass Sie es löschen möchten?',
         onConfirm: async () => {
           try {
-            await apiService.deleteQuote(quote.id);
-            await loadQuotes();
+            await deleteQuote(quote.id);
           } catch (error) {
-            logger.error('Error deleting quote:', error);
+            logger.error('Error deleting quote', { error });
+            alert('Fehler beim Löschen des Angebots. Bitte versuchen Sie es erneut.');
           }
         },
         isDestructive: true,
@@ -194,10 +195,10 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
         message: `Möchten Sie das Angebot ${quote.quoteNumber} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
         onConfirm: async () => {
           try {
-            await apiService.deleteQuote(quote.id);
-            await loadQuotes();
+            await deleteQuote(quote.id);
           } catch (error) {
-            logger.error('Error deleting quote:', error);
+            logger.error('Error deleting quote', { error });
+            alert('Fehler beim Löschen des Angebots. Bitte versuchen Sie es erneut.');
           }
         },
         isDestructive: true,
@@ -207,10 +208,10 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
 
   const handleStatusChange = async (id: string, newStatus: Quote['status']) => {
     try {
-      await apiService.updateQuote(id, { status: newStatus });
-      await loadQuotes();
+      await updateQuote(id, { status: newStatus });
     } catch (error) {
-      logger.error('Error updating quote status:', error);
+      logger.error('Error updating quote status', { error });
+      alert('Fehler beim Ändern des Status. Bitte versuchen Sie es erneut.');
     }
   };
 
@@ -227,7 +228,7 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
       onConfirm: async () => {
         try {
           await apiService.convertQuoteToInvoice(quote.id);
-          await loadQuotes();
+          await refreshQuotes();
           await refreshInvoices(); // Refresh invoices list
           alert('Angebot wurde erfolgreich in eine Rechnung umgewandelt!');
           if (onNavigate) {
@@ -263,14 +264,25 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
     
     setIsBulkOperation(true);
     try {
+      // Fehler pro Angebot abfangen, damit ein Fehlschlag nicht den Rest
+      // des Stapels abbricht.
+      let successCount = 0;
+      let errorCount = 0;
       for (const quoteId of selectedQuoteIds) {
-        await apiService.updateQuote(quoteId, { status: newStatus });
+        try {
+          await updateQuote(quoteId, { status: newStatus });
+          successCount++;
+        } catch (error) {
+          logger.error('Error updating quote status', { error, quoteId });
+          errorCount++;
+        }
       }
-      await loadQuotes();
       setSelectedQuoteIds([]);
-      alert(`${selectedQuoteIds.length} Angebot(e) erfolgreich aktualisiert.`);
+      alert(errorCount > 0
+        ? `${successCount} Angebot(e) aktualisiert, ${errorCount} fehlgeschlagen.`
+        : `${successCount} Angebot(e) erfolgreich aktualisiert.`);
     } catch (error) {
-      logger.error('Error updating quote statuses:', error);
+      logger.error('Error updating quote statuses', { error });
       alert('Fehler beim Aktualisieren der Angebote.');
     } finally {
       setIsBulkOperation(false);
@@ -491,7 +503,7 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
 
             // Update quote status if it's draft
             if (quote.status === 'draft') {
-              await apiService.updateQuote(quote.id, { status: 'sent' });
+              await updateQuote(quote.id, { status: 'sent' });
             }
 
             successCount++;
@@ -501,9 +513,8 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
           }
         }
 
-        await loadQuotes();
         setSelectedQuoteIds([]);
-        
+
         if (errorCount === 0) {
           alert(`Alle ${successCount} Angebote erfolgreich per E-Mail versendet!`);
         } else {
@@ -588,8 +599,14 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
 
       // Update quote status to 'sent' if it's currently 'draft'
       if (emailModal.quote.status === 'draft') {
-        await apiService.updateQuote(emailModal.quote.id, { status: 'sent' });
-        await loadQuotes();
+        // Eigener try/catch: die E-Mail ist hier bereits versendet — ein Fehler
+        // beim Status-Update darf nicht als Versandfehler gemeldet werden.
+        try {
+          await updateQuote(emailModal.quote.id, { status: 'sent' });
+        } catch (error) {
+          logger.error('Error marking quote as sent after email', { error });
+          alert('Die E-Mail wurde versendet, der Status konnte aber nicht auf "Versendet" gesetzt werden.');
+        }
       }
 
       const totalAttachments = processedAttachments.length;

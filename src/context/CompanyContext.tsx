@@ -146,9 +146,8 @@ export function CompanyProvider({
       const updatedCompany = await apiService.updateCompany(companyData);
       setCompany(updatedCompany);
     } catch (error) {
-      logger.error('Error updating company:', error);
-      // Fallback: Update locally
-      setCompany(prev => ({ ...prev, ...companyData }));
+      logger.error('Error updating company', { error });
+      throw error;
     }
   }, []);
 
@@ -161,7 +160,8 @@ export function CompanyProvider({
       const newRate = await apiService.createHourlyRate(hourlyRateData);
       setHourlyRates(prev => [...prev, newRate]);
     } catch (error) {
-      logger.error('Error adding hourly rate:', error);
+      logger.error('Error adding hourly rate', { error });
+      throw error;
     }
   }, []);
 
@@ -172,7 +172,8 @@ export function CompanyProvider({
         rate.id === id ? updatedRate : rate
       ));
     } catch (error) {
-      logger.error('Error updating hourly rate:', error);
+      logger.error('Error updating hourly rate', { error });
+      throw error;
     }
   }, []);
 
@@ -181,7 +182,8 @@ export function CompanyProvider({
       await apiService.deleteHourlyRate(id);
       setHourlyRates(prev => prev.filter(rate => rate.id !== id));
     } catch (error) {
-      logger.error('Error deleting hourly rate:', error);
+      logger.error('Error deleting hourly rate', { error });
+      throw error;
     }
   }, []);
 
@@ -198,7 +200,8 @@ export function CompanyProvider({
       const newTemplate = await apiService.createMaterialTemplate(templateData);
       setMaterialTemplates(prev => [...prev, newTemplate]);
     } catch (error) {
-      logger.error('Error adding material template:', error);
+      logger.error('Error adding material template', { error });
+      throw error;
     }
   }, []);
 
@@ -209,7 +212,8 @@ export function CompanyProvider({
         template.id === id ? updatedTemplate : template
       ));
     } catch (error) {
-      logger.error('Error updating material template:', error);
+      logger.error('Error updating material template', { error });
+      throw error;
     }
   }, []);
 
@@ -218,7 +222,8 @@ export function CompanyProvider({
       await apiService.deleteMaterialTemplate(id);
       setMaterialTemplates(prev => prev.filter(template => template.id !== id));
     } catch (error) {
-      logger.error('Error deleting material template:', error);
+      logger.error('Error deleting material template', { error });
+      throw error;
     }
   }, []);
 

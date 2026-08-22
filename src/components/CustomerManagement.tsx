@@ -225,7 +225,7 @@ export function CustomerManagement() {
         await deleteCustomer(id);
       } catch (error) {
         logger.error('Error deleting customer:', error);
-        // You might want to show an error message to the user here
+        alert('Fehler beim Löschen des Kunden. Bitte versuchen Sie es erneut.');
       }
     }
   };

@@ -72,11 +72,23 @@ export function JobInvoiceGenerator({
   };
 
   const generateInvoices = async () => {
+    // Fehler pro Rechnung abfangen, damit ein Fehlschlag nicht den Rest des
+    // Stapels abbricht und halb abgerechnete Aufträge hinterlässt.
+    const failures: string[] = [];
+    const createInvoiceSafely = async (jobs: JobEntry[]) => {
+      try {
+        await createInvoiceForJobs(jobs);
+      } catch (error) {
+        logger.error('Error creating invoice for jobs', { error });
+        failures.push(jobs.map(j => j.jobNumber || j.title).join(', '));
+      }
+    };
+
     switch (generationType) {
       case 'single':
         // Create separate invoice for each completed job only
         for (const job of completedJobs) {
-          await createInvoiceForJobs([job]);
+          await createInvoiceSafely([job]);
         }
         break;
       
@@ -93,7 +105,7 @@ export function JobInvoiceGenerator({
           }, {} as Record<string, JobEntry[]>);
           
           for (const dayJobs of Object.values(jobsByDateForCustomer)) {
-            await createInvoiceForJobs(dayJobs);
+            await createInvoiceSafely(dayJobs);
           }
         }
         break;
@@ -119,7 +131,7 @@ export function JobInvoiceGenerator({
           }, {} as Record<string, JobEntry[]>);
           
           for (const weekJobs of Object.values(jobsByWeekForCustomer)) {
-            await createInvoiceForJobs(weekJobs);
+            await createInvoiceSafely(weekJobs);
           }
         }
         break;
@@ -138,10 +150,14 @@ export function JobInvoiceGenerator({
           }, {} as Record<string, JobEntry[]>);
           
           for (const monthJobs of Object.values(jobsByMonthForCustomer)) {
-            await createInvoiceForJobs(monthJobs);
+            await createInvoiceSafely(monthJobs);
           }
         }
         break;
+    }
+
+    if (failures.length > 0) {
+      alert(`${failures.length} Rechnung(en) konnten nicht erstellt werden (Aufträge: ${failures.join(' | ')}). Die übrigen wurden erstellt.`);
     }
   };
 
@@ -350,9 +366,21 @@ export function JobInvoiceGenerator({
     // Refresh invoices in other components
     await refreshInvoices();
 
-    // Update job status to 'invoiced'
+    // Update job status to 'invoiced'.
+    // Die Rechnung ist an dieser Stelle bereits angelegt — ein fehlgeschlagenes
+    // Status-Update darf den Vorgang nicht abbrechen, sonst bleiben Aufträge
+    // ohne Kennzeichnung zurück, obwohl die Rechnung existiert.
+    const unmarked: string[] = [];
     for (const job of jobsToInvoice) {
-      await updateJobEntry(job.id, { status: 'invoiced' });
+      try {
+        await updateJobEntry(job.id, { status: 'invoiced' });
+      } catch (error) {
+        logger.error('Error marking job as invoiced', { error, jobId: job.id });
+        unmarked.push(job.jobNumber || job.title);
+      }
+    }
+    if (unmarked.length > 0) {
+      alert(`Die Rechnung wurde erstellt, aber folgende Aufträge konnten nicht als "abgerechnet" markiert werden: ${unmarked.join(', ')}`);
     }
   };
 

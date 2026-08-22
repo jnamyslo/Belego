@@ -882,7 +882,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
       onClose();
     } catch (error) {
       logger.error('Failed to save invoice', { error: (error as Error).message });
-      // You might want to show an error message to the user here
+      alert('Fehler beim Speichern der Rechnung. Bitte versuchen Sie es erneut.');
     } finally {
       setIsSubmitting(false);
     }

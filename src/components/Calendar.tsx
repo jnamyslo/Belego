@@ -472,6 +472,7 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
       });
     } catch (error) {
       logger.error('Error updating job date:', error);
+      alert('Fehler beim Verschieben des Auftrags. Bitte versuchen Sie es erneut.');
     } finally {
       setDraggedJob(null);
     }
@@ -528,6 +529,7 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
       setEditingJob(null);
     } catch (error) {
       logger.error('Error saving job:', error);
+      alert('Fehler beim Speichern des Auftrags. Bitte versuchen Sie es erneut.');
     }
   };
 
@@ -1117,6 +1119,7 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
                 await refreshCustomers();
               } catch (error) {
                 logger.error('Error creating customer:', error);
+                alert('Fehler beim Erstellen des Kunden. Bitte versuchen Sie es erneut.');
               }
             }} className="space-y-4">
               <div>

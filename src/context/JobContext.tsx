@@ -1,24 +1,38 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useCallback, useMemo, ReactNode } from 'react';
 import { JobEntry, Customer, Company, Invoice } from '../types';
 import { apiService } from '../services/api';
 import { generateUUID } from '../utils/uuid';
 import { calculateInvoiceWithDiscounts } from '../utils/discountUtils';
+import { useCrudResource, CrudApi } from '../hooks/useCrudResource';
 import logger from '../utils/logger';
 
 // ============================================================================
 // Types
 // ============================================================================
 
+type JobEntryCreate = Omit<JobEntry, 'id' | 'createdAt' | 'updatedAt'>;
+
 interface JobContextType {
   jobEntries: JobEntry[];
   setJobEntries: React.Dispatch<React.SetStateAction<JobEntry[]>>;
-  addJobEntry: (jobEntry: Omit<JobEntry, 'id' | 'createdAt' | 'updatedAt'>) => Promise<JobEntry>;
+  addJobEntry: (jobEntry: JobEntryCreate) => Promise<JobEntry>;
   updateJobEntry: (id: string, jobEntry: Partial<JobEntry>) => Promise<void>;
   deleteJobEntry: (id: string) => Promise<void>;
   refreshJobEntries: () => Promise<void>;
   addJobSignature: (id: string, signatureData: string, customerName: string) => Promise<void>;
   getJobEntryById: (id: string) => JobEntry | undefined;
 }
+
+// ============================================================================
+// API-Bindung (Modulebene — stabile Identität für useCrudResource)
+// ============================================================================
+
+const jobApi: CrudApi<JobEntry, JobEntryCreate> = {
+  list: () => apiService.getJobEntries(),
+  create: (data) => apiService.createJobEntry(data),
+  update: (id, data) => apiService.updateJobEntry(id, data),
+  remove: (id) => apiService.deleteJobEntry(id),
+};
 
 // ============================================================================
 // Context
@@ -36,65 +50,8 @@ interface JobProviderProps {
 }
 
 export function JobProvider({ children, initialJobEntries = [] }: JobProviderProps) {
-  const [jobEntries, setJobEntries] = useState<JobEntry[]>(initialJobEntries);
-
-  const getJobEntryById = useCallback((id: string): JobEntry | undefined => {
-    return jobEntries.find(j => j.id === id);
-  }, [jobEntries]);
-
-  const addJobEntry = useCallback(async (jobEntryData: Omit<JobEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<JobEntry> => {
-    try {
-      const newJobEntry = await apiService.createJobEntry(jobEntryData);
-      setJobEntries(prev => [...prev, newJobEntry]);
-      return newJobEntry;
-    } catch (error) {
-      logger.error('Error adding job entry:', error);
-      // Fallback: Create locally
-      const newJobEntry: JobEntry = {
-        ...jobEntryData,
-        id: generateUUID(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      setJobEntries(prev => [...prev, newJobEntry]);
-      return newJobEntry;
-    }
-  }, []);
-
-  const updateJobEntry = useCallback(async (id: string, jobEntryData: Partial<JobEntry>): Promise<void> => {
-    try {
-      const updatedJobEntry = await apiService.updateJobEntry(id, jobEntryData);
-      setJobEntries(prev => prev.map(job =>
-        job.id === id ? updatedJobEntry : job
-      ));
-    } catch (error) {
-      logger.error('Error updating job entry:', error);
-      // Fallback: Update locally
-      setJobEntries(prev => prev.map(job =>
-        job.id === id ? { ...job, ...jobEntryData, updatedAt: new Date() } : job
-      ));
-    }
-  }, []);
-
-  const deleteJobEntry = useCallback(async (id: string): Promise<void> => {
-    try {
-      await apiService.deleteJobEntry(id);
-      setJobEntries(prev => prev.filter(job => job.id !== id));
-    } catch (error) {
-      logger.error('Error deleting job entry:', error);
-      // Fallback: Delete locally
-      setJobEntries(prev => prev.filter(job => job.id !== id));
-    }
-  }, []);
-
-  const refreshJobEntries = useCallback(async (): Promise<void> => {
-    try {
-      const jobEntriesData = await apiService.getJobEntries();
-      setJobEntries(jobEntriesData);
-    } catch (error) {
-      logger.error('Error refreshing job entries:', error);
-    }
-  }, []);
+  const resource = useCrudResource<JobEntry, JobEntryCreate>('job entry', jobApi, initialJobEntries);
+  const { setItems: setJobEntries } = resource;
 
   const addJobSignature = useCallback(async (id: string, signatureData: string, customerName: string): Promise<void> => {
     try {
@@ -103,21 +60,21 @@ export function JobProvider({ children, initialJobEntries = [] }: JobProviderPro
         job.id === id ? response.job : job
       ));
     } catch (error) {
-      logger.error('Error adding job signature:', error);
+      logger.error('Error adding job signature', { error });
       throw error;
     }
-  }, []);
+  }, [setJobEntries]);
 
   const value: JobContextType = useMemo(() => ({
-    jobEntries,
-    setJobEntries,
-    addJobEntry,
-    updateJobEntry,
-    deleteJobEntry,
-    refreshJobEntries,
+    jobEntries: resource.items,
+    setJobEntries: resource.setItems,
+    addJobEntry: resource.add,
+    updateJobEntry: resource.update,
+    deleteJobEntry: resource.remove,
+    refreshJobEntries: resource.refresh,
     addJobSignature,
-    getJobEntryById,
-  }), [jobEntries, setJobEntries, addJobEntry, updateJobEntry, deleteJobEntry, refreshJobEntries, addJobSignature, getJobEntryById]);
+    getJobEntryById: resource.getById,
+  }), [resource, addJobSignature]);
 
   return (
     <JobContext.Provider value={value}>

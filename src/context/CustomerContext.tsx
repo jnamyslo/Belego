@@ -1,22 +1,34 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import { Customer, HourlyRate, MaterialTemplate } from '../types';
 import { apiService } from '../services/api';
-import { generateUUID } from '../utils/uuid';
-import logger from '../utils/logger';
+import { useCrudResource, CrudApi } from '../hooks/useCrudResource';
 
 // ============================================================================
 // Types
 // ============================================================================
 
+type CustomerCreate = Omit<Customer, 'id' | 'customerNumber' | 'createdAt'>;
+
 interface CustomerContextType {
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
-  addCustomer: (customer: Omit<Customer, 'id' | 'customerNumber' | 'createdAt'>) => Promise<Customer>;
+  addCustomer: (customer: CustomerCreate) => Promise<Customer>;
   updateCustomer: (id: string, customer: Partial<Customer>) => Promise<void>;
   deleteCustomer: (id: string) => Promise<void>;
   refreshCustomers: () => Promise<void>;
   getCustomerById: (id: string) => Customer | undefined;
 }
+
+// ============================================================================
+// API-Bindung (Modulebene — stabile Identität für useCrudResource)
+// ============================================================================
+
+const customerApi: CrudApi<Customer, CustomerCreate> = {
+  list: () => apiService.getCustomers(),
+  create: (data) => apiService.createCustomer(data),
+  update: (id, data) => apiService.updateCustomer(id, data),
+  remove: (id) => apiService.deleteCustomer(id),
+};
 
 // ============================================================================
 // Context
@@ -34,79 +46,17 @@ interface CustomerProviderProps {
 }
 
 export function CustomerProvider({ children, initialCustomers = [] }: CustomerProviderProps) {
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
-
-  const getCustomerById = useCallback((id: string): Customer | undefined => {
-    return customers.find(c => c.id === id);
-  }, [customers]);
-
-  const addCustomer = useCallback(async (customerData: Omit<Customer, 'id' | 'customerNumber' | 'createdAt'>): Promise<Customer> => {
-    try {
-      const newCustomer = await apiService.createCustomer(customerData);
-      setCustomers(prev => [...prev, newCustomer]);
-      return newCustomer;
-    } catch (error) {
-      logger.error('Error adding customer:', error);
-      // Fallback: Generate customer number locally
-      const existingNumbers = customers.map(c => parseInt(c.customerNumber)).filter(n => !isNaN(n));
-      const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-      const customerNumber = String(nextNumber).padStart(4, '0');
-
-      const newCustomer: Customer = {
-        ...customerData,
-        id: generateUUID(),
-        customerNumber,
-        createdAt: new Date(),
-      };
-      setCustomers(prev => [...prev, newCustomer]);
-      return newCustomer;
-    }
-  }, [customers]);
-
-  const updateCustomer = useCallback(async (id: string, customerData: Partial<Customer>): Promise<void> => {
-    try {
-      const updatedCustomer = await apiService.updateCustomer(id, customerData);
-      setCustomers(prev => prev.map(customer =>
-        customer.id === id ? updatedCustomer : customer
-      ));
-    } catch (error) {
-      logger.error('Error updating customer:', error);
-      // Fallback: Update locally
-      setCustomers(prev => prev.map(customer =>
-        customer.id === id ? { ...customer, ...customerData } : customer
-      ));
-    }
-  }, []);
-
-  const deleteCustomer = useCallback(async (id: string): Promise<void> => {
-    try {
-      await apiService.deleteCustomer(id);
-      setCustomers(prev => prev.filter(customer => customer.id !== id));
-    } catch (error) {
-      logger.error('Error deleting customer:', error);
-      // Fallback: Delete locally
-      setCustomers(prev => prev.filter(customer => customer.id !== id));
-    }
-  }, []);
-
-  const refreshCustomers = useCallback(async (): Promise<void> => {
-    try {
-      const customersData = await apiService.getCustomers();
-      setCustomers(customersData);
-    } catch (error) {
-      logger.error('Error refreshing customers:', error);
-    }
-  }, []);
+  const resource = useCrudResource<Customer, CustomerCreate>('customer', customerApi, initialCustomers);
 
   const value: CustomerContextType = useMemo(() => ({
-    customers,
-    setCustomers,
-    addCustomer,
-    updateCustomer,
-    deleteCustomer,
-    refreshCustomers,
-    getCustomerById,
-  }), [customers, setCustomers, addCustomer, updateCustomer, deleteCustomer, refreshCustomers, getCustomerById]);
+    customers: resource.items,
+    setCustomers: resource.setItems,
+    addCustomer: resource.add,
+    updateCustomer: resource.update,
+    deleteCustomer: resource.remove,
+    refreshCustomers: resource.refresh,
+    getCustomerById: resource.getById,
+  }), [resource]);
 
   return (
     <CustomerContext.Provider value={value}>

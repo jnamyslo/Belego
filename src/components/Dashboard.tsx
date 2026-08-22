@@ -37,6 +37,15 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   // Get locale from company settings, default to 'de-DE'
   const locale = company?.locale || 'de-DE';
 
+  const handleMarkAsPaid = async (invoiceId: string) => {
+    try {
+      await updateInvoice(invoiceId, { status: 'paid' });
+    } catch (error) {
+      logger.error('Error marking invoice as paid', { error });
+      alert('Fehler beim Markieren als bezahlt. Bitte versuchen Sie es erneut.');
+    }
+  };
+
   const handleSendEmail = async (invoice) => {
     const customer = customers.find(c => c.id === invoice.customerId);
     if (!customer) {
@@ -155,11 +164,19 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       
       alert(`Rechnung erfolgreich per E-Mail versendet! (${formatLabels.join(', ')})${attachmentInfo}`);
       
-      // Automatically mark as sent if it was draft
+      // Automatically mark as sent if it was draft.
+      // Eigener try/catch: die E-Mail ist zu diesem Zeitpunkt bereits erfolgreich
+      // versendet — ein Fehler beim Status-Update darf nicht als Versandfehler
+      // gemeldet werden und darf den Dialog nicht offen lassen.
       if (emailModal.invoice.status === 'draft') {
-        await updateInvoice(emailModal.invoice.id, { status: 'sent' });
+        try {
+          await updateInvoice(emailModal.invoice.id, { status: 'sent' });
+        } catch (error) {
+          logger.error('Error marking invoice as sent after email', { error });
+          alert('Die E-Mail wurde versendet, der Status konnte aber nicht auf "Versendet" gesetzt werden.');
+        }
       }
-      
+
       // Close email dialog
       setEmailModal({ isOpen: false, invoice: null, customer: null });
     } catch (error) {
@@ -402,7 +419,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                         <button
                           className="bg-green-100 hover:bg-green-200 text-green-700 hover:text-green-800 px-3 py-1 rounded-md transition-colors duration-200 shadow-sm flex items-center text-xs font-medium"
                           title="Als bezahlt markieren"
-                          onClick={() => updateInvoice(invoice.id, { status: 'paid' })}
+                          onClick={() => handleMarkAsPaid(invoice.id)}
                         >
                           <Check className="h-3 w-3 mr-1" />
                           <span>Bezahlt</span>
@@ -456,7 +473,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 {(invoice.status === 'sent' || invoice.status === 'overdue') && (
                   <button
                     className="bg-green-100 hover:bg-green-200 text-green-700 px-2 py-1 rounded-md transition-colors text-xs font-medium flex items-center"
-                    onClick={() => updateInvoice(invoice.id, { status: 'paid' })}
+                    onClick={() => handleMarkAsPaid(invoice.id)}
                   >
                     <Check className="h-3 w-3 mr-1" />
                     Bezahlt

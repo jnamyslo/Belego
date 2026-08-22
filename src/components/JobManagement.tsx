@@ -197,9 +197,14 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
         isOpen: true,
         title: 'Auftrag löschen',
         message: 'Dieser Auftrag wurde bereits abgerechnet. Das Löschen abgerechneter Aufträge kann die GoBD-Konformität verletzen und ist rechtlich problematisch. Sind Sie sicher, dass Sie fortfahren möchten?',
-        onConfirm: () => {
-          deleteJobEntry(job.id);
-          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        onConfirm: async () => {
+          try {
+            await deleteJobEntry(job.id);
+            setConfirmModal(prev => ({ ...prev, isOpen: false }));
+          } catch (error) {
+            logger.error('Error deleting job', { error });
+            alert('Fehler beim Löschen des Auftrags. Bitte versuchen Sie es erneut.');
+          }
         },
         isDestructive: true,
         isGoBDWarning: true
@@ -209,9 +214,14 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
         isOpen: true,
         title: 'Auftrag löschen',
         message: `Möchten Sie den Auftrag "${job.title}" wirklich löschen?`,
-        onConfirm: () => {
-          deleteJobEntry(job.id);
-          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        onConfirm: async () => {
+          try {
+            await deleteJobEntry(job.id);
+            setConfirmModal(prev => ({ ...prev, isOpen: false }));
+          } catch (error) {
+            logger.error('Error deleting job', { error });
+            alert('Fehler beim Löschen des Auftrags. Bitte versuchen Sie es erneut.');
+          }
         },
         isDestructive: true
       });
@@ -232,9 +242,9 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
       setShowForm(false);
       setEditingJob(null);
     } catch (error) {
-      logger.error('Error saving job:', error);
-      // Don't close the form if there was an error, so user can retry
-      // The error message is already shown by the Context
+      logger.error('Error saving job', { error });
+      // Formular bleibt offen, damit der Nutzer es erneut versuchen kann.
+      alert('Fehler beim Speichern des Auftrags. Bitte versuchen Sie es erneut.');
     }
   };
 
@@ -256,7 +266,8 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
       
       await updateJobEntry(jobId, { status: newStatus });
     } catch (error) {
-      logger.error('Error updating job status:', error);
+      logger.error('Error updating job status', { error });
+      alert('Fehler beim Ändern des Status. Bitte versuchen Sie es erneut.');
     }
   };
 
@@ -335,16 +346,30 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
       });
       const skippedCount = selectedJobIds.length - targetJobs.length;
 
+      // Fehler pro Auftrag abfangen, damit ein Fehlschlag nicht den Rest
+      // des Stapels abbricht.
+      let successCount = 0;
+      let errorCount = 0;
       for (const jobId of targetJobs) {
-        await updateJobEntry(jobId, { status: newStatus });
+        try {
+          await updateJobEntry(jobId, { status: newStatus });
+          successCount++;
+        } catch (error) {
+          logger.error('Error updating job status', { error, jobId });
+          errorCount++;
+        }
       }
       setSelectedJobIds([]);
-      const message = skippedCount > 0
-        ? `${targetJobs.length} Auftrag/Aufträge aktualisiert. ${skippedCount} abgerechnete(r) Auftrag/Aufträge übersprungen.`
-        : `${targetJobs.length} Auftrag/Aufträge erfolgreich aktualisiert.`;
-      alert(message);
+      const parts = [`${successCount} Auftrag/Aufträge erfolgreich aktualisiert.`];
+      if (skippedCount > 0) {
+        parts.push(`${skippedCount} abgerechnete(r) Auftrag/Aufträge übersprungen.`);
+      }
+      if (errorCount > 0) {
+        parts.push(`${errorCount} fehlgeschlagen.`);
+      }
+      alert(parts.join(' '));
     } catch (error) {
-      logger.error('Error updating job statuses:', error);
+      logger.error('Error updating job statuses', { error });
       alert('Fehler beim Aktualisieren der Aufträge.');
     } finally {
       setIsBulkOperation(false);
@@ -397,13 +422,25 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
       onConfirm: async () => {
         setIsBulkOperation(true);
         try {
+          // Fehler pro Auftrag abfangen, damit ein Fehlschlag nicht den Rest
+          // des Stapels abbricht.
+          let successCount = 0;
+          let errorCount = 0;
           for (const jobId of selectedJobIds) {
-            await deleteJobEntry(jobId);
+            try {
+              await deleteJobEntry(jobId);
+              successCount++;
+            } catch (error) {
+              logger.error('Error deleting job', { error, jobId });
+              errorCount++;
+            }
           }
           setSelectedJobIds([]);
-          alert(`${selectedJobIds.length} Auftrag/Aufträge erfolgreich gelöscht.`);
+          alert(errorCount > 0
+            ? `${successCount} Auftrag/Aufträge gelöscht, ${errorCount} fehlgeschlagen.`
+            : `${successCount} Auftrag/Aufträge erfolgreich gelöscht.`);
         } catch (error) {
-          logger.error('Error deleting jobs:', error);
+          logger.error('Error deleting jobs', { error });
           alert('Fehler beim Löschen der Aufträge.');
         } finally {
           setIsBulkOperation(false);
@@ -1176,7 +1213,8 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
                 // Refresh customers in other components
                 await refreshCustomers();
               } catch (error) {
-                logger.error('Error creating customer:', error);
+                logger.error('Error creating customer', { error });
+                alert('Fehler beim Erstellen des Kunden. Bitte versuchen Sie es erneut.');
               }
             }} className="space-y-4">
               <div>

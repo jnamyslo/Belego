@@ -207,7 +207,8 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
           try {
             await deleteInvoice(invoice.id);
           } catch (error) {
-            logger.error('Error deleting invoice:', error);
+            logger.error('Error deleting invoice', { error });
+            alert('Fehler beim Löschen der Rechnung. Bitte versuchen Sie es erneut.');
           }
         },
         isDestructive: true,
@@ -222,7 +223,8 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
           try {
             await deleteInvoice(invoice.id);
           } catch (error) {
-            logger.error('Error deleting invoice:', error);
+            logger.error('Error deleting invoice', { error });
+            alert('Fehler beim Löschen der Rechnung. Bitte versuchen Sie es erneut.');
           }
         },
         isDestructive: true
@@ -234,8 +236,8 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
     try {
       await updateInvoice(id, { status: newStatus });
     } catch (error) {
-      logger.error('Error updating invoice status:', error);
-      // You might want to show an error message to the user here
+      logger.error('Error updating invoice status', { error });
+      alert('Fehler beim Ändern des Status. Bitte versuchen Sie es erneut.');
     }
   };
 
@@ -682,11 +684,19 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
       
       alert(`Rechnung erfolgreich per E-Mail versendet! (${formatLabels.join(', ')})${attachmentInfo}`);
       
-      // Automatically mark as sent if it was draft
+      // Automatically mark as sent if it was draft.
+      // Eigener try/catch: die E-Mail ist hier bereits erfolgreich versendet —
+      // ein Fehler beim Status-Update darf nicht als Versandfehler gemeldet
+      // werden und darf den Dialog nicht offen lassen.
       if (emailModal.invoice.status === 'draft') {
-        await updateInvoice(emailModal.invoice.id, { status: 'sent' });
+        try {
+          await updateInvoice(emailModal.invoice.id, { status: 'sent' });
+        } catch (error) {
+          logger.error('Error marking invoice as sent after email', { error });
+          alert('Die E-Mail wurde versendet, der Status konnte aber nicht auf "Versendet" gesetzt werden.');
+        }
       }
-      
+
       // Close email dialog
       setEmailModal({ isOpen: false, invoice: null, customer: null, isBulkMode: false, bulkInvoices: [] });
     } catch (error) {
@@ -749,13 +759,25 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
     
     setIsBulkOperation(true);
     try {
+      // Fehler pro Rechnung abfangen, damit ein Fehlschlag nicht den Rest
+      // des Stapels abbricht.
+      let successCount = 0;
+      let errorCount = 0;
       for (const invoiceId of selectedInvoiceIds) {
-        await updateInvoice(invoiceId, { status: newStatus });
+        try {
+          await updateInvoice(invoiceId, { status: newStatus });
+          successCount++;
+        } catch (error) {
+          logger.error('Error updating invoice status', { error, invoiceId });
+          errorCount++;
+        }
       }
       setSelectedInvoiceIds([]);
-      alert(`${selectedInvoiceIds.length} Rechnung(en) erfolgreich aktualisiert.`);
+      alert(errorCount > 0
+        ? `${successCount} Rechnung(en) aktualisiert, ${errorCount} fehlgeschlagen.`
+        : `${successCount} Rechnung(en) erfolgreich aktualisiert.`);
     } catch (error) {
-      logger.error('Error updating invoice statuses:', error);
+      logger.error('Error updating invoice statuses', { error });
       alert('Fehler beim Aktualisieren der Rechnungen.');
     } finally {
       setIsBulkOperation(false);
@@ -1276,7 +1298,8 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
                 });
                 setShowCustomerForm(false);
               } catch (error) {
-                logger.error('Error creating customer:', error);
+                logger.error('Error creating customer', { error });
+                alert('Fehler beim Erstellen des Kunden. Bitte versuchen Sie es erneut.');
               }
             }} className="space-y-4">
               <div>

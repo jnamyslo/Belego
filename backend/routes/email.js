@@ -1,4 +1,5 @@
 import express from 'express';
+import { query } from '../database.js';
 import { sendInvoiceEmail, sendInvoiceEmailMultiFormat, sendReminderEmail, testEmailConnection } from '../services/emailService.js';
 import logger from '../utils/logger.js';
 
@@ -31,7 +32,6 @@ router.post('/send-invoice-multi', async (req, res) => {
     }
 
     // Get company settings for styling
-    const { query } = await import('../database.js');
     const companyResult = await query('SELECT primary_color, secondary_color FROM company WHERE id = 1');
     const companySettings = companyResult.rows[0] || { primary_color: '#2563eb', secondary_color: '#64748b' };
 
@@ -97,7 +97,6 @@ router.post('/send-invoice', async (req, res) => {
     }
 
     // Get company settings for styling
-    const { query } = await import('../database.js');
     const companyResult = await query('SELECT primary_color, secondary_color FROM company WHERE id = 1');
     const companySettings = companyResult.rows[0] || { primary_color: '#2563eb', secondary_color: '#64748b' };
 
@@ -145,7 +144,6 @@ router.post('/send-reminder', async (req, res) => {
     }
 
     // Get company settings for styling
-    const { query } = await import('../database.js');
     const companyResult = await query('SELECT primary_color, secondary_color FROM company WHERE id = 1');
     const companySettings = companyResult.rows[0] || { primary_color: '#2563eb', secondary_color: '#64748b' };
 

@@ -1,4 +1,5 @@
 import express from 'express';
+import { query } from '../database.js';
 import logger from '../utils/logger.js';
 
 const router = express.Router();
@@ -6,7 +7,6 @@ const router = express.Router();
 // Get all hourly rates
 router.get('/', async (req, res) => {
   try {
-    const { query } = await import('../database.js');
     const result = await query(`
       SELECT 
         id,
@@ -35,7 +35,6 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Name und Stundensatz sind erforderlich' });
     }
 
-    const { query } = await import('../database.js');
     
     // If this is set as default, unset other defaults
     if (isDefault) {
@@ -72,7 +71,6 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Name und Stundensatz sind erforderlich' });
     }
 
-    const { query } = await import('../database.js');
     
     // If this is set as default, unset other defaults
     if (isDefault) {
@@ -108,7 +106,6 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { query } = await import('../database.js');
     
     const result = await query('DELETE FROM hourly_rates WHERE id = $1 RETURNING *', [id]);
     

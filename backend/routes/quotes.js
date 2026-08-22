@@ -104,41 +104,15 @@ router.post('/:id/send-email', async (req, res) => {
     const { id } = req.params;
     const { customerEmails, customText, attachments, pdfBuffer } = req.body;
 
-    // Get quote with all details
-    const quoteResult = await query(`
-      SELECT q.*,
-             COALESCE(items_subquery.items, '{}'::jsonb[]) as items
-      FROM quotes q
-      LEFT JOIN (
-        SELECT quote_id,
-               array_agg(
-                 jsonb_build_object(
-                   'id', id,
-                   'description', description,
-                   'quantity', quantity,
-                   'unitPrice', unit_price,
-                   'taxRate', tax_rate,
-                   'total', total,
-                   'order', item_order,
-                   'discountType', discount_type,
-                   'discountValue', discount_value,
-                   'discountAmount', discount_amount
-                 ) ORDER BY item_order
-               ) as items
-        FROM quote_items
-        GROUP BY quote_id
-      ) items_subquery ON q.id = items_subquery.quote_id
-      WHERE q.id = $1
-    `, [id]);
+    // Get quote with all details (same loader the other quote routes use)
+    const quote = await findQuoteById(id);
 
-    if (quoteResult.rows.length === 0) {
+    if (!quote) {
       return res.status(404).json({ error: 'Quote not found' });
     }
 
-    const quote = quoteResult.rows[0];
-
     // Get customer details
-    const customerResult = await query('SELECT * FROM customers WHERE id = $1', [quote.customer_id]);
+    const customerResult = await query('SELECT * FROM customers WHERE id = $1', [quote.customerId]);
     if (customerResult.rows.length === 0) {
       return res.status(404).json({ error: 'Customer not found' });
     }
@@ -152,16 +126,20 @@ router.post('/:id/send-email', async (req, res) => {
     // Send email (using existing email service)
     const emailService = await import('../services/emailService.js');
 
+    // findQuoteById liefert bereits camelCase + geparste Beträge.
+    // quote.attachments wird hier bewusst NICHT übernommen: das Frontend sendet
+    // die vom Nutzer ausgewählten Angebots-Anhänge bereits in req.body.attachments —
+    // ein zusätzliches Anhängen würde sie doppelt versenden.
     const quoteData = {
       id: quote.id,
-      quoteNumber: quote.quote_number,
-      customerName: quote.customer_name,
-      issueDate: quote.issue_date,
-      validUntil: quote.valid_until,
-      items: quote.items || [],
-      subtotal: parseFloat(quote.subtotal),
-      taxAmount: parseFloat(quote.tax_amount),
-      total: parseFloat(quote.total),
+      quoteNumber: quote.quoteNumber,
+      customerName: quote.customerName,
+      issueDate: quote.issueDate,
+      validUntil: quote.validUntil,
+      items: quote.items,
+      subtotal: quote.subtotal,
+      taxAmount: quote.taxAmount,
+      total: quote.total,
       status: quote.status,
       notes: quote.notes,
       pdfBuffer: pdfBuffer, // PDF generated on frontend

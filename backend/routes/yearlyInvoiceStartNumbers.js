@@ -1,10 +1,10 @@
 import express from 'express';
+import { pool } from '../database.js';
 import logger from '../utils/logger.js';
 const router = express.Router();
 
 // Get all yearly invoice start numbers
 router.get('/', async (req, res) => {
-  const { pool } = await import('../database.js');
   const client = await pool.connect();
   
   try {
@@ -23,7 +23,6 @@ router.get('/', async (req, res) => {
 
 // Create or update yearly invoice start number
 router.post('/', async (req, res) => {
-  const { pool } = await import('../database.js');
   const client = await pool.connect();
   
   try {
@@ -55,7 +54,6 @@ router.post('/', async (req, res) => {
 
 // Delete yearly invoice start number
 router.delete('/:year', async (req, res) => {
-  const { pool } = await import('../database.js');
   const client = await pool.connect();
   
   try {

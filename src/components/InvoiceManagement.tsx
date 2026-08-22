@@ -13,7 +13,7 @@ import { DocumentPreview, createInvoiceAttachmentPreviewDocuments, PreviewDocume
 import { generateInvoicePDF, downloadBlob } from '../utils/pdfGenerator';
 import { apiService } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
-import { blobToBase64 } from '../utils/blobUtils';
+import { blobToBase64, base64ToBlob } from '../utils/blobUtils';
 
 interface InvoiceManagementProps {
   initialFilter?: string;
@@ -328,13 +328,7 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
                 // Convert base64 to blob and download
                 try {
                   const base64Data = attachment.content.split(',')[1] || attachment.content;
-                  const byteCharacters = atob(base64Data);
-                  const byteNumbers = new Array(byteCharacters.length);
-                  for (let j = 0; j < byteCharacters.length; j++) {
-                    byteNumbers[j] = byteCharacters.charCodeAt(j);
-                  }
-                  const byteArray = new Uint8Array(byteNumbers);
-                  const blob = new Blob([byteArray], { type: attachment.contentType });
+                  const blob = base64ToBlob(base64Data, attachment.contentType);
                   
                   // Add invoice number prefix to attachment filename
                   const attachmentFilename = `${invoice.invoiceNumber}_${attachment.name}`;
@@ -423,13 +417,7 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
           // Convert base64 to blob and download
           try {
             const base64Data = attachment.content.split(',')[1] || attachment.content;
-            const byteCharacters = atob(base64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let j = 0; j < byteCharacters.length; j++) {
-              byteNumbers[j] = byteCharacters.charCodeAt(j);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: attachment.contentType });
+            const blob = base64ToBlob(base64Data, attachment.contentType);
             
             // Add invoice number prefix to attachment filename
             const attachmentFilename = `${invoice.invoiceNumber}_${attachment.name}`;
@@ -510,9 +498,14 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
               }
             }
 
-            // Add stored invoice attachments to the processed attachments
-            if (invoice.attachments && invoice.attachments.length > 0) {
-              for (const storedAttachment of invoice.attachments) {
+            // Auswahl der Rechnungs-Anhänge aus dem Modal berücksichtigen: nur
+            // Anhänge anfügen, die zu dieser Rechnung gehören UND ausgewählt wurden
+            // (der Einzelversand filtert bereits so).
+            if (selectedInvoiceAttachmentIds && selectedInvoiceAttachmentIds.length > 0 && invoice.attachments) {
+              const selectedOwnAttachments = invoice.attachments.filter(att =>
+                selectedInvoiceAttachmentIds.includes(att.id)
+              );
+              for (const storedAttachment of selectedOwnAttachments) {
                 processedAttachments.push({
                   name: storedAttachment.name,
                   content: storedAttachment.content,
@@ -539,11 +532,23 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
               });
             }
             
+            // Empfänger: eigene Adressen des Kunden plus im Modal ausgewählte /
+            // manuell erfasste Adressen. MUSS ein Array sein — die API und
+            // /api/email/send-invoice-multi lehnen einen String mit HTTP 400 ab.
+            const customerEmails = [
+              customer.email,
+              ...(customer.additionalEmails?.filter(e => e.isActive).map(e => e.email) || [])
+            ];
+            const extraEmails = [...(selectedEmails || []), ...(manualEmails || [])];
+            const recipients = Array.from(
+              new Set([...customerEmails, ...extraEmails].filter(Boolean))
+            ) as string[];
+
             // Send email
             const result = await apiService.sendInvoiceEmailMultiFormat(
-              customer.email, 
+              recipients,
               invoiceFormats,
-              invoice, 
+              invoice,
               customText,
               processedAttachments
             );

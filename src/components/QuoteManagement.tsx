@@ -13,6 +13,7 @@ import { formatCurrency } from '../utils/formatters';
 import { generateQuotePDF, downloadBlob } from '../utils/pdfGenerator';
 import { DocumentPreview, PreviewDocument, createQuoteAttachmentPreviewDocuments } from './DocumentPreview';
 import { processAttachments, AttachmentFile } from '../utils/fileUtils';
+import { blobToBase64 } from '../utils/blobUtils';
 
 interface QuoteManagementProps {
   onNavigate?: (page: string, quoteId?: string) => void;
@@ -309,16 +310,22 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
     
     setIsExporting('bulk');
     try {
+      // Fehler pro Angebot abfangen, damit ein Fehlschlag nicht den Rest
+      // des Stapels abbricht.
       let successCount = 0;
       for (const quoteId of selectedQuoteIds) {
         const quote = quotes.find(q => q.id === quoteId);
-        if (quote) {
-          const customer = customers.find(c => c.id === quote.customerId);
-          if (customer) {
-            const pdfBlob = await generateQuotePDF(quote, { company, customer });
-            downloadBlob(pdfBlob, `${quote.quoteNumber}.pdf`);
-            successCount++;
-          }
+        const customer = quote ? customers.find(c => c.id === quote.customerId) : undefined;
+        if (!quote || !customer) {
+          logger.warn('Angebot oder Kunde für Bulk-Download nicht gefunden', { quoteId });
+          continue;
+        }
+        try {
+          const pdfBlob = await generateQuotePDF(quote, { company, customer });
+          downloadBlob(pdfBlob, `${quote.quoteNumber}.pdf`);
+          successCount++;
+        } catch (error) {
+          logger.error('Error downloading quote', { error, quoteId });
         }
       }
       if (successCount === selectedQuoteIds.length) {
@@ -482,10 +489,7 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
               customer: customer!,
             });
 
-            const arrayBuffer = await pdfBlob.arrayBuffer();
-            const uint8Array = new Uint8Array(arrayBuffer);
-            const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
-            const pdfBase64 = btoa(binaryString);
+            const pdfBase64 = await blobToBase64(pdfBlob);
 
             // Send email for this quote: this quote's own customer emails, plus any
             // extra recipients (selected emails / manual emails) the user picked in the modal
@@ -584,10 +588,7 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
       });
 
       // Convert blob to base64 for backend
-      const arrayBuffer = await pdfBlob.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
-      const pdfBase64 = btoa(binaryString);
+      const pdfBase64 = await blobToBase64(pdfBlob);
 
       await apiService.sendQuoteEmail(
         emailModal.quote.id,

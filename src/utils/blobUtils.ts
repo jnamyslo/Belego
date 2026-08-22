@@ -27,8 +27,26 @@ export async function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
+ * Converts a base64 string back into a Blob.
+ * Counterpart to blobToBase64 — used for turning stored attachment content
+ * (base64 in the database) back into a downloadable file.
+ *
+ * @param base64 - The base64 encoded content (without data URL prefix)
+ * @param contentType - MIME type for the resulting Blob
+ * @returns Blob
+ */
+export function base64ToBlob(base64: string, contentType = 'application/octet-stream'): Blob {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  return new Blob([new Uint8Array(byteNumbers)], { type: contentType });
+}
+
+/**
  * Alternative method using FileReader (can be slower but more memory efficient)
- * 
+ *
  * @param blob - The Blob to convert
  * @returns Promise<string> - The base64 encoded string
  */

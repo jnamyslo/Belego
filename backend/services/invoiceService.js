@@ -63,13 +63,18 @@ export async function createInvoice(data) {
     globalDiscountAmount = null,
   } = data;
 
-  // Generate invoice number before opening transaction (generateInvoiceNumber uses its own connection)
-  const invoiceNumber = await generateInvoiceNumber(issueDate);
+  const maxAttempts = 5;
+  let lastError;
 
-  const client = await pool.connect();
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    // Generate invoice number before opening transaction (generateInvoiceNumber uses its own connection).
+    // Regenerated on each attempt in case a concurrent request just took this number.
+    const invoiceNumber = await generateInvoiceNumber(issueDate);
 
-  try {
-    await client.query('BEGIN');
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
 
     // Get customer name
     const customerResult = await client.query('SELECT name FROM customers WHERE id = $1', [customerId]);
@@ -165,15 +170,22 @@ export async function createInvoice(data) {
       `, [invoiceId, attachment.name, attachment.content, attachment.contentType, attachment.size]);
     }
 
-    await client.query('COMMIT');
+      await client.query('COMMIT');
 
-    return await findInvoiceById(invoiceId);
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
+      return await findInvoiceById(invoiceId);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      if (error.code === '23505' && attempt < maxAttempts - 1) {
+        lastError = error;
+        continue;
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
   }
+
+  throw lastError;
 }
 
 export async function updateInvoice(id, data) {

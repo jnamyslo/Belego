@@ -7,8 +7,8 @@ import { PDFDocument, AFRelationship } from 'pdf-lib';
 import { Invoice } from '../../types';
 import { PDFOptions } from '../pdfGenerator';
 import logger from '../logger';
-import { escapeXML, formatAmountForXML } from './xmlUtils';
-import { calculateTaxBreakdown, hasOnlyZeroTaxRate } from './taxCalculations';
+import { escapeXML, formatAmountForXML, roundToCents, getCountryCode } from './xmlUtils';
+import { calculateTaxBreakdown, hasOnlyZeroTaxRate, getTaxCategoryCode, getTaxExemptionReason } from './taxCalculations';
 
 /**
  * Generate ZUGFeRD XML string
@@ -19,7 +19,35 @@ import { calculateTaxBreakdown, hasOnlyZeroTaxRate } from './taxCalculations';
 export function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): string {
   // Use new payment information or fall back to legacy fields
   const paymentInfo = options.company.paymentInformation;
-  
+
+  // Tax breakdown (sorted by rate), shared between header total and per-rate tax groups.
+  const taxBreakdownEntries = Object.entries(calculateTaxBreakdown(invoice.items, invoice))
+    .sort(([rateA], [rateB]) => Number(rateA) - Number(rateB));
+  // BR-CO-14: header tax = sum of the already-rounded per-category amounts.
+  const headerTaxAmount = taxBreakdownEntries.reduce((sum, [, breakdown]) => sum + roundToCents(breakdown.taxAmount), 0);
+
+  const itemDiscountTotal = invoice.items?.reduce((sum, item) => sum + (item.discountAmount || 0), 0) || 0;
+  const globalDiscountAmount = invoice.globalDiscountAmount || 0;
+
+  // BR-CO-10: header line total = sum of line net amounts (item discounts already subtracted per line).
+  const headerLineExtensionAmount = roundToCents(invoice.subtotal - itemDiscountTotal);
+
+  // Global (document-level) discount modelled as one allowance per tax rate, split
+  // proportionally (see xrechnungGenerator for the derivation), so BR-CO-11/13 hold.
+  const subtotalAfterItemDiscounts = invoice.subtotal - itemDiscountTotal;
+  const globalRatio = globalDiscountAmount > 0 && subtotalAfterItemDiscounts > 0
+    ? globalDiscountAmount / subtotalAfterItemDiscounts
+    : 0;
+  const documentAllowances = globalDiscountAmount > 0
+    ? taxBreakdownEntries.map(([rate, breakdown]) => ({
+        rate,
+        categoryCode: getTaxCategoryCode(Number(rate), options.company.isSmallBusiness),
+        amount: roundToCents(globalRatio > 0 ? breakdown.taxableAmount * (globalRatio / (1 - globalRatio)) : 0),
+      }))
+    : [];
+  const allowanceTotalAmount = roundToCents(documentAllowances.reduce((sum, a) => sum + a.amount, 0));
+  const taxExclusiveAmount = roundToCents(headerLineExtensionAmount - allowanceTotalAmount);
+
   // Generate proper ZUGFeRD 2.1 XML (EN 16931 compliant)
   return `<?xml version="1.0" encoding="UTF-8"?>
 
@@ -47,8 +75,10 @@ export function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): strin
         const accountHolder = paymentInfo?.accountHolder || options.company.name;
         
         const bankInfo = `${accountHolder} - BIC: ${bic}  IBAN: ${bankAccount}`;
-        const reverseChargeNote = hasOnlyZeroTaxRate(invoice.items) ? 'Gemäß § 13b UStG geht die Steuerschuld auf den Leistungsempfänger über' : '';
-        
+        const reverseChargeNote = hasOnlyZeroTaxRate(invoice.items)
+          ? getTaxExemptionReason(getTaxCategoryCode(0, options.company.isSmallBusiness))
+          : '';
+
         return [bankInfo, reverseChargeNote].filter(Boolean).join('\n');
       })()}</ram:Content>
 		</ram:IncludedNote>
@@ -76,9 +106,16 @@ export function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): strin
 			<ram:SpecifiedLineTradeSettlement>
 				<ram:ApplicableTradeTax>
 					<ram:TypeCode>VAT</ram:TypeCode>
-					<ram:CategoryCode>S</ram:CategoryCode>
+					<ram:CategoryCode>${getTaxCategoryCode(item.taxRate, options.company.isSmallBusiness)}</ram:CategoryCode>
 					<ram:RateApplicablePercent>${item.taxRate}</ram:RateApplicablePercent>
-				</ram:ApplicableTradeTax>
+				</ram:ApplicableTradeTax>${(item.discountAmount || 0) > 0 ? `
+				<ram:SpecifiedTradeAllowanceCharge>
+					<ram:ChargeIndicator>
+						<udt:Indicator>false</udt:Indicator>
+					</ram:ChargeIndicator>
+					<ram:ActualAmount>${formatAmountForXML(item.discountAmount || 0)}</ram:ActualAmount>
+					<ram:Reason>Rabatt</ram:Reason>
+				</ram:SpecifiedTradeAllowanceCharge>` : ''}
 				<ram:SpecifiedTradeSettlementLineMonetarySummation>
 					<ram:LineTotalAmount>${formatAmountForXML((item.quantity * item.unitPrice) - (item.discountAmount || 0))}</ram:LineTotalAmount>
 				</ram:SpecifiedTradeSettlementLineMonetarySummation>
@@ -104,7 +141,7 @@ export function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): strin
 					<ram:PostcodeCode>${options.company.postalCode}</ram:PostcodeCode>
 					<ram:LineOne>${escapeXML(options.company.address)}</ram:LineOne>
 					<ram:CityName>${escapeXML(options.company.city)}</ram:CityName>
-					<ram:CountryID>${options.company.country === 'Deutschland' ? 'DE' : 'DE'}</ram:CountryID>
+					<ram:CountryID>${getCountryCode(options.company.country)}</ram:CountryID>
 				</ram:PostalTradeAddress>
 				<ram:URIUniversalCommunication>
 					<ram:URIID schemeID="EM">${options.company.email}</ram:URIID>
@@ -119,7 +156,7 @@ export function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): strin
 					<ram:PostcodeCode>${options.customer.postalCode}</ram:PostcodeCode>
 					<ram:LineOne>${escapeXML(options.customer.address)}${options.customer.addressSupplement ? ', ' + escapeXML(options.customer.addressSupplement) : ''}</ram:LineOne>
 					<ram:CityName>${escapeXML(options.customer.city)}</ram:CityName>
-					<ram:CountryID>${options.customer.country === 'Deutschland' ? 'DE' : 'DE'}</ram:CountryID>
+					<ram:CountryID>${getCountryCode(options.customer.country)}</ram:CountryID>
 				</ram:PostalTradeAddress>
 				<ram:URIUniversalCommunication>
 					<ram:URIID schemeID="EM">${options.customer.email || 'kunde@example.de'}</ram:URIID>
@@ -146,16 +183,31 @@ export function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): strin
 					<ram:BICID>${paymentInfo?.bic || options.company.bic || 'COBADEFFXXX'}</ram:BICID>
 				</ram:PayeeSpecifiedCreditorFinancialInstitution>
 			</ram:SpecifiedTradeSettlementPaymentMeans>
-			${Object.entries(calculateTaxBreakdown(invoice.items, invoice))
-				.filter(([rate]) => Number(rate) > 0)
-				.sort(([rateA], [rateB]) => Number(rateA) - Number(rateB))
-				.map(([rate, breakdown]) => `<ram:ApplicableTradeTax>
-				<ram:CalculatedAmount>${formatAmountForXML(breakdown.taxAmount)}</ram:CalculatedAmount>
-				<ram:TypeCode>VAT</ram:TypeCode>
+			${taxBreakdownEntries
+				.map(([rate, breakdown]) => {
+					const categoryCode = getTaxCategoryCode(Number(rate), options.company.isSmallBusiness);
+					const exemptionReason = getTaxExemptionReason(categoryCode);
+					return `<ram:ApplicableTradeTax>
+				<ram:CalculatedAmount>${formatAmountForXML(roundToCents(breakdown.taxAmount))}</ram:CalculatedAmount>
+				<ram:TypeCode>VAT</ram:TypeCode>${exemptionReason ? `
+				<ram:ExemptionReason>${escapeXML(exemptionReason)}</ram:ExemptionReason>` : ''}
 				<ram:BasisAmount>${formatAmountForXML(breakdown.taxableAmount)}</ram:BasisAmount>
-				<ram:CategoryCode>S</ram:CategoryCode>
+				<ram:CategoryCode>${categoryCode}</ram:CategoryCode>
 				<ram:RateApplicablePercent>${rate}</ram:RateApplicablePercent>
-			</ram:ApplicableTradeTax>`).join('')}
+			</ram:ApplicableTradeTax>`;
+				}).join('')}${documentAllowances.map(allowance => `
+			<ram:SpecifiedTradeAllowanceCharge>
+				<ram:ChargeIndicator>
+					<udt:Indicator>false</udt:Indicator>
+				</ram:ChargeIndicator>
+				<ram:ActualAmount>${formatAmountForXML(allowance.amount)}</ram:ActualAmount>
+				<ram:Reason>Rabatt</ram:Reason>
+				<ram:CategoryTradeTax>
+					<ram:TypeCode>VAT</ram:TypeCode>
+					<ram:CategoryCode>${allowance.categoryCode}</ram:CategoryCode>
+					<ram:RateApplicablePercent>${allowance.rate}</ram:RateApplicablePercent>
+				</ram:CategoryTradeTax>
+			</ram:SpecifiedTradeAllowanceCharge>`).join('')}
 			<ram:SpecifiedTradePaymentTerms>
 				<ram:Description>/</ram:Description>
 				<ram:DueDateDateTime>
@@ -163,15 +215,10 @@ export function generateZUGFeRDXML(invoice: Invoice, options: PDFOptions): strin
 				</ram:DueDateDateTime>
 			</ram:SpecifiedTradePaymentTerms>
 			<ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-				<ram:LineTotalAmount>${formatAmountForXML(invoice.subtotal)}</ram:LineTotalAmount>
-				${(() => {
-					const itemDiscountAmount = invoice.items?.reduce((sum, item) => sum + (item.discountAmount || 0), 0) || 0;
-					const globalDiscountAmount = invoice.globalDiscountAmount || 0;
-					const totalDiscountAmount = itemDiscountAmount + globalDiscountAmount;
-					return totalDiscountAmount > 0 ? `<ram:AllowanceTotalAmount>${formatAmountForXML(totalDiscountAmount)}</ram:AllowanceTotalAmount>` : '';
-				})()}
-				<ram:TaxBasisTotalAmount>${formatAmountForXML(invoice.subtotal - (invoice.items?.reduce((sum, item) => sum + (item.discountAmount || 0), 0) || 0) - (invoice.globalDiscountAmount || 0))}</ram:TaxBasisTotalAmount>
-				<ram:TaxTotalAmount currencyID="EUR">${formatAmountForXML(invoice.taxAmount)}</ram:TaxTotalAmount>
+				<ram:LineTotalAmount>${formatAmountForXML(headerLineExtensionAmount)}</ram:LineTotalAmount>
+				${allowanceTotalAmount > 0 ? `<ram:AllowanceTotalAmount>${formatAmountForXML(allowanceTotalAmount)}</ram:AllowanceTotalAmount>` : ''}
+				<ram:TaxBasisTotalAmount>${formatAmountForXML(taxExclusiveAmount)}</ram:TaxBasisTotalAmount>
+				<ram:TaxTotalAmount currencyID="EUR">${formatAmountForXML(headerTaxAmount)}</ram:TaxTotalAmount>
 				<ram:GrandTotalAmount>${formatAmountForXML(invoice.total)}</ram:GrandTotalAmount>
 				<ram:DuePayableAmount>${formatAmountForXML(invoice.total)}</ram:DuePayableAmount>
 			</ram:SpecifiedTradeSettlementHeaderMonetarySummation>

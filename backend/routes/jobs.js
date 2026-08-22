@@ -86,42 +86,46 @@ router.get('/:id', async (req, res) => {
 
 // Create a new job entry
 router.post('/', async (req, res) => {
+  const {
+    customerId,
+    customerAddress,
+    title,
+    description,
+    date,
+    startTime,
+    endTime,
+    hoursWorked,
+    hourlyRate,
+    hourlyRateId,
+    timeEntries,
+    materials,
+    status,
+    notes,
+    priority,
+    attachments,
+    externalJobNumber
+  } = req.body;
+
+  // Validate required fields
+  if (!customerId || !title || !description) {
+    return res.status(400).json({
+      error: 'Missing required fields',
+      details: {
+        customerId: !customerId ? 'Customer ID is required' : null,
+        title: !title ? 'Title is required' : null,
+        description: !description ? 'Description is required' : null
+      }
+    });
+  }
+
+  const maxAttempts = 5;
+  let lastError;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
-    
-    const {
-      customerId,
-      customerAddress,
-      title,
-      description,
-      date,
-      startTime,
-      endTime,
-      hoursWorked,
-      hourlyRate,
-      hourlyRateId,
-      timeEntries,
-      materials,
-      status,
-      notes,
-      priority,
-      attachments,
-      externalJobNumber
-    } = req.body;
-
-    // Validate required fields
-    if (!customerId || !title || !description) {
-      return res.status(400).json({ 
-        error: 'Missing required fields', 
-        details: {
-          customerId: !customerId ? 'Customer ID is required' : null,
-          title: !title ? 'Title is required' : null,
-          description: !description ? 'Description is required' : null
-        }
-      });
-    }
 
     // Get customer name
     const customerResult = await client.query('SELECT name FROM customers WHERE id = $1', [customerId]);
@@ -138,12 +142,13 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Invalid date format' });
     }
     const formattedDate = jobDate.toISOString().split('T')[0]; // YYYY-MM-DD format
-    
+
     // Generate job number - format: AB-YYYY-XXX
+    // Regenerated on each attempt in case a concurrent request just took this number.
     const currentYear = new Date().getFullYear();
     const yearPattern = `AB-${currentYear}-%`;
     const lastJobResult = await client.query('SELECT job_number FROM job_entries WHERE job_number LIKE $1 ORDER BY created_at DESC LIMIT 1', [yearPattern]);
-    
+
     let jobNumber;
     if (lastJobResult.rows.length === 0) {
       jobNumber = `AB-${currentYear}-001`;
@@ -161,7 +166,7 @@ router.post('/', async (req, res) => {
         jobNumber = `AB-${currentYear}-001`;
       }
     }
-    
+
     // Create job entry with generated job number
     const result = await client.query(`
       INSERT INTO job_entries (
@@ -261,18 +266,29 @@ router.post('/', async (req, res) => {
     `, [jobId]);
 
     const job = formatJobData(completeJob.rows[0]);
-    res.status(201).json(job);
+    return res.status(201).json(job);
   } catch (error) {
     await client.query('ROLLBACK');
+    if (error.code === '23505' && attempt < maxAttempts - 1) {
+      lastError = error;
+      continue;
+    }
     logger.error('Error creating job:', error);
-    res.status(500).json({ 
-      error: 'Failed to create job', 
+    return res.status(500).json({
+      error: 'Failed to create job',
       details: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   } finally {
     client.release();
   }
+  }
+
+  logger.error('Error creating job after retries:', lastError);
+  return res.status(500).json({
+    error: 'Failed to create job',
+    details: lastError?.message
+  });
 });
 
 // Update a job entry
@@ -621,8 +637,9 @@ router.post('/:id/signature', async (req, res) => {
     // Validate required fields
     if (!signatureData || !customerName) {
       logger.warn('Signature upload failed - missing required fields', { jobId: id, hasSignatureData: !!signatureData, hasCustomerName: !!customerName });
-      return res.status(400).json({ 
-        error: 'Missing required fields', 
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: 'Missing required fields',
         details: {
           signatureData: !signatureData ? 'Signature data is required' : null,
           customerName: !customerName ? 'Customer name is required' : null
@@ -633,7 +650,8 @@ router.post('/:id/signature', async (req, res) => {
     // Additional validation for signature data format
     if (!signatureData.startsWith('data:image/png;base64,')) {
       logger.warn('Signature upload failed - invalid data format', { jobId: id, signatureDataPrefix: signatureData ? signatureData.substring(0, 30) : 'null' });
-      return res.status(400).json({ 
+      await client.query('ROLLBACK');
+      return res.status(400).json({
         error: 'Invalid signature data format',
         details: {
           signatureData: 'Signature data must be a valid PNG data URL'

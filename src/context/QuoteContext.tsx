@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { Quote } from '../types';
 import { apiService } from '../services/api';
 import logger from '../utils/logger';
@@ -81,7 +81,7 @@ export function QuoteProvider({ children, initialQuotes = [] }: QuoteProviderPro
     }
   }, []);
 
-  const value: QuoteContextType = {
+  const value: QuoteContextType = useMemo(() => ({
     quotes,
     setQuotes,
     addQuote,
@@ -89,7 +89,7 @@ export function QuoteProvider({ children, initialQuotes = [] }: QuoteProviderPro
     deleteQuote,
     refreshQuotes,
     getQuoteById,
-  };
+  }), [quotes, setQuotes, addQuote, updateQuote, deleteQuote, refreshQuotes, getQuoteById]);
 
   return (
     <QuoteContext.Provider value={value}>

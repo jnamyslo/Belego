@@ -12,8 +12,8 @@ router.get('/eligible', async (req, res) => {
     // Get company reminder settings
     const companyResult = await client.query('SELECT * FROM company WHERE id = 1');
     const company = companyResult.rows[0];
-    
-    if (!company.reminders_enabled) {
+
+    if (!company || !company.reminders_enabled) {
       return res.json([]);
     }
     

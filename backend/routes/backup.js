@@ -315,22 +315,26 @@ router.post('/restore', async (req, res) => {
     ];
 
     logger.info('Restoring JSON data...');
+    const failedTables = [];
     for (const table of restoreOrder) {
       if (backupData.data[table] && Array.isArray(backupData.data[table])) {
         try {
           logger.info(`Restoring table ${table}...`);
 
           if (backupData.data[table].length > 0) {
-            // Get column names from first record
+            // Get column names from first record.
+            // Identifiers come from client-supplied JSON keys, so they MUST be
+            // escaped to prevent SQL injection (values are already parameterized).
             const columns = Object.keys(backupData.data[table][0]);
             const placeholders = columns.map((_, index) => `$${index + 1}`).join(', ');
-            const columnNames = columns.join(', ');
+            const columnNames = columns.map(col => client.escapeIdentifier(col)).join(', ');
+            const tableName = client.escapeIdentifier(table);
 
             // Insert data
             for (const record of backupData.data[table]) {
               const values = columns.map(col => processValueForRestore(table, col, record[col]));
               await client.query(
-                `INSERT INTO ${table} (${columnNames}) VALUES (${placeholders})`,
+                `INSERT INTO ${tableName} (${columnNames}) VALUES (${placeholders})`,
                 values
               );
             }
@@ -338,13 +342,21 @@ router.post('/restore', async (req, res) => {
             logger.info(`Restored ${backupData.data[table].length} records to ${table}`);
             restoredRecords += backupData.data[table].length;
           }
-          
+
           restoredTables++;
         } catch (error) {
           logger.error(`ERROR: Could not restore table ${table}:`, error.message);
-          // Don't throw here to continue with other tables, but log it prominently
+          // Don't throw here immediately, so we can log every failing table prominently;
+          // failures are aggregated below and abort the whole restore before COMMIT.
+          failedTables.push(table);
         }
       }
+    }
+
+    // Abort the whole restore (and roll back) if any table failed to import -
+    // committing a partial restore would silently corrupt the database.
+    if (failedTables.length > 0) {
+      throw new Error(`Wiederherstellung abgebrochen: Folgende Tabellen konnten nicht wiederhergestellt werden: ${failedTables.join(', ')}`);
     }
 
     // Post-restore fixes for backward compatibility
@@ -858,22 +870,26 @@ router.post('/restore-zip', async (req, res) => {
       ];
 
       logger.info('Restoring data...');
+      const failedTables = [];
       for (const table of restoreOrder) {
         if (backupData.data[table] && Array.isArray(backupData.data[table])) {
           try {
             logger.info(`Restoring table ${table}...`);
 
             if (backupData.data[table].length > 0) {
-              // Get column names from first record
+              // Get column names from first record.
+              // Identifiers come from client-supplied JSON keys, so they MUST be
+              // escaped to prevent SQL injection (values are already parameterized).
               const columns = Object.keys(backupData.data[table][0]);
               const placeholders = columns.map((_, index) => `$${index + 1}`).join(', ');
-              const columnNames = columns.join(', ');
+              const columnNames = columns.map(col => client.escapeIdentifier(col)).join(', ');
+              const tableName = client.escapeIdentifier(table);
 
               // Insert data
               for (const record of backupData.data[table]) {
                 const values = columns.map(col => processValueForRestore(table, col, record[col]));
                 await client.query(
-                  `INSERT INTO ${table} (${columnNames}) VALUES (${placeholders})`,
+                  `INSERT INTO ${tableName} (${columnNames}) VALUES (${placeholders})`,
                   values
                 );
               }
@@ -883,15 +899,23 @@ router.post('/restore-zip', async (req, res) => {
             } else {
               logger.info(`ℹ️  No data to restore for table ${table}`);
             }
-            
+
             restoredTables++;
           } catch (error) {
             logger.error(`❌ ERROR: Could not restore table ${table}:`, error.message);
-            // Don't throw here to continue with other tables, but log it prominently
+            // Don't throw here immediately, so we can log every failing table prominently;
+            // failures are aggregated below and abort the whole restore before COMMIT.
+            failedTables.push(table);
           }
         } else {
           logger.info(`⏭️  Skipping table ${table} - no data in backup`);
         }
+      }
+
+      // Abort the whole restore (and roll back) if any table failed to import -
+      // committing a partial restore would silently corrupt the database.
+      if (failedTables.length > 0) {
+        throw new Error(`Wiederherstellung abgebrochen: Folgende Tabellen konnten nicht wiederhergestellt werden: ${failedTables.join(', ')}`);
       }
 
       // Post-restore fixes for backward compatibility

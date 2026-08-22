@@ -1,6 +1,7 @@
 import express from 'express';
 import { query } from '../database.js';
 import logger from '../utils/logger.js';
+import { validateSchema, schemas } from '../utils/validation.js';
 
 const router = express.Router();
 
@@ -291,46 +292,74 @@ router.post('/', async (req, res) => {
   try {
     const { name, email, address, addressSupplement, city, postalCode, country, taxId, phone } = req.body;
 
-    // Generate customer number - find highest existing number and increment
-    // Always format as 4-digit number with leading zeros (e.g., 0001, 0002, etc.)
-    const maxNumberResult = await query('SELECT customer_number FROM customers ORDER BY CAST(customer_number AS INTEGER) DESC LIMIT 1');
-    let customerNumber;
-    if (maxNumberResult.rows.length === 0) {
-      // No customers exist, start with 0001
-      customerNumber = '0001';
-    } else {
-      const lastNumber = parseInt(maxNumberResult.rows[0].customer_number);
-      if (isNaN(lastNumber)) {
-        // Fallback if parsing fails
+    const validation = validateSchema(req.body, schemas.customer);
+    if (!validation.valid) {
+      return res.status(400).json({ error: 'Validation failed', details: validation.errors });
+    }
+
+    const maxAttempts = 5;
+    let lastError;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Generate customer number - find highest existing number and increment.
+      // Always format as 4-digit number with leading zeros (e.g., 0001, 0002, etc.).
+      // Only consider purely numeric customer_number values - legacy/imported data may
+      // contain non-numeric values, which would otherwise make CAST(...AS INTEGER) throw
+      // for the whole query and block customer creation entirely.
+      const maxNumberResult = await query(`
+        SELECT customer_number FROM customers
+        WHERE customer_number ~ '^[0-9]+$'
+        ORDER BY CAST(customer_number AS INTEGER) DESC LIMIT 1
+      `);
+      let customerNumber;
+      if (maxNumberResult.rows.length === 0) {
+        // No customers exist, start with 0001
         customerNumber = '0001';
       } else {
-        customerNumber = String(lastNumber + 1).padStart(4, '0');
+        const lastNumber = parseInt(maxNumberResult.rows[0].customer_number);
+        if (isNaN(lastNumber)) {
+          // Fallback if parsing fails
+          customerNumber = '0001';
+        } else {
+          customerNumber = String(lastNumber + 1).padStart(4, '0');
+        }
+      }
+
+      try {
+        const result = await query(`
+          INSERT INTO customers (customer_number, name, email, address, address_supplement, city, postal_code, country, tax_id, phone)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          RETURNING *
+        `, [customerNumber, name, email || null, address, addressSupplement || null, city, postalCode, country, taxId, phone]);
+
+        const row = result.rows[0];
+        const customer = {
+          id: row.id,
+          customerNumber: row.customer_number,
+          name: row.name,
+          email: row.email,
+          address: row.address,
+          addressSupplement: row.address_supplement,
+          city: row.city,
+          postalCode: row.postal_code,
+          country: row.country,
+          taxId: row.tax_id,
+          phone: row.phone,
+          createdAt: row.created_at
+        };
+
+        return res.status(201).json(customer);
+      } catch (error) {
+        // Concurrent requests can generate the same customer_number; retry with a fresh one.
+        if (error.code === '23505' && attempt < maxAttempts - 1) {
+          lastError = error;
+          continue;
+        }
+        throw error;
       }
     }
 
-    const result = await query(`
-      INSERT INTO customers (customer_number, name, email, address, address_supplement, city, postal_code, country, tax_id, phone)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING *
-    `, [customerNumber, name, email || null, address, addressSupplement || null, city, postalCode, country, taxId, phone]);
-
-    const row = result.rows[0];
-    const customer = {
-      id: row.id,
-      customerNumber: row.customer_number,
-      name: row.name,
-      email: row.email,
-      address: row.address,
-      addressSupplement: row.address_supplement,
-      city: row.city,
-      postalCode: row.postal_code,
-      country: row.country,
-      taxId: row.tax_id,
-      phone: row.phone,
-      createdAt: row.created_at
-    };
-
-    res.status(201).json(customer);
+    throw lastError;
   } catch (error) {
     logger.error('Failed to create customer', {
       error: error.message,

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { Customer, HourlyRate, MaterialTemplate } from '../types';
 import { apiService } from '../services/api';
 import { generateUUID } from '../utils/uuid';
@@ -98,7 +98,7 @@ export function CustomerProvider({ children, initialCustomers = [] }: CustomerPr
     }
   }, []);
 
-  const value: CustomerContextType = {
+  const value: CustomerContextType = useMemo(() => ({
     customers,
     setCustomers,
     addCustomer,
@@ -106,7 +106,7 @@ export function CustomerProvider({ children, initialCustomers = [] }: CustomerPr
     deleteCustomer,
     refreshCustomers,
     getCustomerById,
-  };
+  }), [customers, setCustomers, addCustomer, updateCustomer, deleteCustomer, refreshCustomers, getCustomerById]);
 
   return (
     <CustomerContext.Provider value={value}>

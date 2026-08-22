@@ -25,6 +25,21 @@ interface CalendarProps {
   onNavigate?: (page: string) => void;
 }
 
+// Parse a job's `date` field as a LOCAL calendar date. The backend returns
+// `YYYY-MM-DD` strings; `new Date('YYYY-MM-DD')` parses that as UTC midnight,
+// which `.toDateString()`/`.toLocaleDateString()` then shift back a day in
+// any timezone west of UTC. Building the Date from the parsed parts keeps
+// the calendar day stable regardless of the browser's timezone.
+function parseLocalDate(value: Date | string): Date {
+  if (value instanceof Date) return value;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (match) {
+    const [, y, m, d] = match;
+    return new Date(Number(y), Number(m) - 1, Number(d));
+  }
+  return new Date(value);
+}
+
 export function Calendar({ onNavigate }: CalendarProps = {}) {
   const { customers, addCustomer, refreshCustomers } = useCustomers();
   const { jobEntries, addJobEntry, updateJobEntry, refreshJobEntries } = useJobs();
@@ -132,7 +147,7 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
 
   // Function to jump to job date and highlight it
   const jumpToJob = (job: JobEntry) => {
-    const jobDate = new Date(job.date);
+    const jobDate = parseLocalDate(job.date);
     
     // Update current date for month view
     setCurrentDate(new Date(jobDate.getFullYear(), jobDate.getMonth(), 1));
@@ -250,7 +265,7 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
   // Get jobs for a specific date
   const getJobsForDate = (date: Date) => {
     const jobs = jobEntries.filter((job: JobEntry) => {
-      const jobDate = new Date(job.date);
+      const jobDate = parseLocalDate(job.date);
       return jobDate.toDateString() === date.toDateString();
     });
     
@@ -358,9 +373,17 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
     
     if (!draggedJob) return;
 
-    const jobDate = new Date(draggedJob.date);
+    const jobDate = parseLocalDate(draggedJob.date);
     const isSameDate = jobDate.toDateString() === targetDate.toDateString();
-    
+
+    if (!isSameDate) {
+      // Dropped onto a job in a different day: this is a cross-day reschedule,
+      // not a reorder. Delegate to the day-level handler (which updates the
+      // job's date). Without this, stopPropagation() above swallows the drop.
+      handleDrop(e, targetDate);
+      return;
+    }
+
     if (isSameDate && targetJobId) {
       // Reordering within the same day
       const dayJobs = getJobsForDate(targetDate);
@@ -399,7 +422,7 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
     if (!draggedJob) return;
 
     // Don't allow dropping on the same date
-    const jobDate = new Date(draggedJob.date);
+    const jobDate = parseLocalDate(draggedJob.date);
     if (jobDate.toDateString() === targetDate.toDateString()) {
       setDraggedJob(null);
       return;
@@ -426,8 +449,18 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
       // Remove from old date
       newPositions.delete(`${oldDateKey}-${draggedJob.id}`);
       
-      // Add to new date at the end
+      // Add to new date at the end. Pre-existing jobs on the target day may
+      // not have an explicit position yet (e.g. nothing was ever dragged
+      // there before), in which case they fall back to 999 in the sort —
+      // backfill their positions first so the moved job reliably sorts
+      // after them instead of jumping to the top.
       const targetDayJobs = getJobsForDate(targetDate);
+      targetDayJobs.forEach((existingJob, index) => {
+        const key = `${newDateKey}-${existingJob.id}`;
+        if (!newPositions.has(key)) {
+          newPositions.set(key, index);
+        }
+      });
       newPositions.set(`${newDateKey}-${draggedJob.id}`, targetDayJobs.length);
       
       setJobPositions(newPositions);
@@ -542,7 +575,7 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
               {searchResults.map((job) => {
                 const customer = customers.find(c => c.id === job.customerId);
-                const jobDate = new Date(job.date);
+                const jobDate = parseLocalDate(job.date);
                 const totalHours = calculateTotalHours(job);
                 
                 return (
@@ -740,7 +773,7 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
                               <React.Fragment key={job.id}>
                                 {/* Drop zone before the job */}
                                 {jobIndex === 0 && draggedJob && 
-                                 new Date(draggedJob.date).toDateString() === date.toDateString() && 
+                                 parseLocalDate(draggedJob.date).toDateString() === date.toDateString() && 
                                  draggedJob.id !== job.id && (
                                   <div
                                     onDragOver={(e) => {
@@ -772,7 +805,7 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
                                     ${getStatusColor(job.status)}
                                     ${job.status === 'invoiced' ? 'cursor-not-allowed opacity-75' : 'hover:shadow-sm'}
                                     ${draggedJob && draggedJob.id !== job.id && 
-                                      new Date(draggedJob.date).toDateString() === date.toDateString() ? 
+                                      parseLocalDate(draggedJob.date).toDateString() === date.toDateString() ? 
                                       'border-blue-300 border-dashed' : ''}
                                     ${highlightedJobId === job.id ? 'ring-2 ring-red-500 bg-red-100 border-red-500' : ''}
                                     transition-all duration-150
@@ -906,7 +939,7 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
                         <React.Fragment key={job.id}>
                           {/* Drop zone before the job */}
                           {jobIndex === 0 && draggedJob && 
-                           new Date(draggedJob.date).toDateString() === date.toDateString() && 
+                           parseLocalDate(draggedJob.date).toDateString() === date.toDateString() && 
                            draggedJob.id !== job.id && (
                             <div
                               onDragOver={(e) => {
@@ -938,7 +971,7 @@ export function Calendar({ onNavigate }: CalendarProps = {}) {
                               ${getStatusColor(job.status)}
                               ${job.status === 'invoiced' ? 'cursor-not-allowed opacity-75' : 'hover:shadow-sm'}
                               ${draggedJob && draggedJob.id !== job.id && 
-                                new Date(draggedJob.date).toDateString() === date.toDateString() ? 
+                                parseLocalDate(draggedJob.date).toDateString() === date.toDateString() ? 
                                 'border-blue-300 border-dashed' : ''}
                               ${highlightedJobId === job.id ? 'ring-2 ring-red-500 bg-red-100 border-red-500' : ''}
                               transition-all duration-150

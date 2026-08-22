@@ -1,5 +1,5 @@
 import express from 'express';
-import { query } from '../database.js';
+import { query, pool } from '../database.js';
 import logger from '../utils/logger.js';
 
 const router = express.Router();
@@ -287,42 +287,59 @@ router.put('/', async (req, res) => {
     values.push(1);
     const whereParamIndex = paramIndex;
 
-    let result = null;
-    
-    // Only run UPDATE if there are fields to update
-    if (updates.length > 0) {
-      const updateQuery = `
-        UPDATE company SET
-          ${updates.join(', ')}
-        WHERE id = $${whereParamIndex}
-        RETURNING *
-      `;
-      result = await query(updateQuery, values);
-    } else {
-      // If no fields to update, just fetch the current data
-      result = await query('SELECT * FROM company WHERE id = 1');
-    }
+    // Run the company UPDATE and the hourly-rates delete/re-insert on a single
+    // transactional client, so a mid-loop failure can't leave the company row
+    // updated while rates are only partially rewritten.
+    const client = await pool.connect();
+    let result;
+    let hourlyRatesResult;
+    try {
+      await client.query('BEGIN');
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Company information not found' });
-    }
-
-    // Update hourly rates if provided
-    if (req.body.hourlyRates && Array.isArray(req.body.hourlyRates)) {
-      // Delete existing hourly rates
-      await query('DELETE FROM hourly_rates WHERE company_id = 1');
-      
-      // Insert new hourly rates
-      for (const rate of req.body.hourlyRates) {
-        await query(`
-          INSERT INTO hourly_rates (id, name, description, rate, is_default, company_id)
-          VALUES ($1, $2, $3, $4, $5, 1)
-        `, [rate.id, rate.name, rate.description || null, rate.rate, rate.isDefault || false]);
+      // Only run UPDATE if there are fields to update
+      if (updates.length > 0) {
+        const updateQuery = `
+          UPDATE company SET
+            ${updates.join(', ')}
+          WHERE id = $${whereParamIndex}
+          RETURNING *
+        `;
+        result = await client.query(updateQuery, values);
+      } else {
+        // If no fields to update, just fetch the current data
+        result = await client.query('SELECT * FROM company WHERE id = 1');
       }
+
+      if (result.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Company information not found' });
+      }
+
+      // Update hourly rates if provided
+      if (req.body.hourlyRates && Array.isArray(req.body.hourlyRates)) {
+        // Delete existing hourly rates
+        await client.query('DELETE FROM hourly_rates WHERE company_id = 1');
+
+        // Insert new hourly rates
+        for (const rate of req.body.hourlyRates) {
+          await client.query(`
+            INSERT INTO hourly_rates (id, name, description, rate, is_default, company_id)
+            VALUES ($1, $2, $3, $4, $5, 1)
+          `, [rate.id, rate.name, rate.description || null, rate.rate, rate.isDefault || false]);
+        }
+      }
+
+      // Get updated hourly rates
+      hourlyRatesResult = await client.query('SELECT * FROM hourly_rates ORDER BY is_default DESC, name ASC');
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
 
-    // Get updated hourly rates
-    const hourlyRatesResult = await query('SELECT * FROM hourly_rates ORDER BY is_default DESC, name ASC');
     const updatedHourlyRates = hourlyRatesResult.rows.map(rate => ({
       id: rate.id,
       name: rate.name,

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
 import { Company, HourlyRate, MaterialTemplate, InvoiceTemplate } from '../types';
 import { apiService } from '../services/api';
 import { generateUUID } from '../utils/uuid';
@@ -278,7 +278,7 @@ export function CompanyProvider({
     return company.invoiceTemplates || [];
   }, [company.invoiceTemplates]);
 
-  const value: CompanyContextType = {
+  const value: CompanyContextType = useMemo(() => ({
     company,
     setCompany,
     updateCompany: updateCompanyData,
@@ -298,7 +298,27 @@ export function CompanyProvider({
     updateInvoiceTemplate: updateInvoiceTemplateData,
     deleteInvoiceTemplate: deleteInvoiceTemplateData,
     getInvoiceTemplates,
-  };
+  }), [
+    company,
+    setCompany,
+    updateCompanyData,
+    hourlyRates,
+    setHourlyRates,
+    addHourlyRate,
+    updateHourlyRateData,
+    deleteHourlyRateData,
+    getHourlyRates,
+    materialTemplates,
+    setMaterialTemplates,
+    addMaterialTemplate,
+    updateMaterialTemplateData,
+    deleteMaterialTemplateData,
+    getMaterialTemplates,
+    addInvoiceTemplate,
+    updateInvoiceTemplateData,
+    deleteInvoiceTemplateData,
+    getInvoiceTemplates,
+  ]);
 
   return (
     <CompanyContext.Provider value={value}>

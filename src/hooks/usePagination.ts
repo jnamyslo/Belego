@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 
 interface UsePaginationOptions {
   initialPage?: number;
@@ -45,9 +45,13 @@ export function usePagination<T>(
 
   // Ensure current page is valid
   const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
-  if (validCurrentPage !== currentPage) {
-    setCurrentPage(validCurrentPage);
-  }
+
+  // Clamp out-of-range page in an effect, not during render
+  useEffect(() => {
+    if (validCurrentPage !== currentPage) {
+      setCurrentPage(validCurrentPage);
+    }
+  }, [validCurrentPage, currentPage]);
 
   const startIndex = (validCurrentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalItems);

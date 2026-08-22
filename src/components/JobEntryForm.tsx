@@ -152,7 +152,11 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
       
       setFormData(initialFormData);
     }
-  }, [job, company.hourlyRates, defaultDate]);
+    // Intentionally keyed on `job?.id` only: a changing `company.hourlyRates`
+    // reference (settings updated elsewhere) or a fresh `defaultDate` identity
+    // must NOT reset an in-progress form (same class as QuoteEditor's init effect fix).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.id]);
 
   // Filter customers based on search term
   const filteredCustomers = customers.filter(customer =>
@@ -251,9 +255,14 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
         if (entry.startTime && entry.endTime) {
           const start = new Date(`2000-01-01T${entry.startTime}:00`);
           const end = new Date(`2000-01-01T${entry.endTime}:00`);
-          const diffMs = end.getTime() - start.getTime();
+          let diffMs = end.getTime() - start.getTime();
+          // End time before (or equal to) start time is treated as an overnight
+          // entry (e.g. 22:00 - 06:00) rather than silently ignored.
+          if (diffMs <= 0) {
+            diffMs += 24 * 60 * 60 * 1000;
+          }
           const diffHours = diffMs / (1000 * 60 * 60);
-          
+
           if (diffHours > 0) {
             const minutes = Math.round(diffHours * 60);
             timeEntries[index].hoursWorked = Math.round((minutes / 60) * 100) / 100;
@@ -298,9 +307,14 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
       if (updated.startTime && updated.endTime) {
         const start = new Date(`2000-01-01T${updated.startTime}:00`);
         const end = new Date(`2000-01-01T${updated.endTime}:00`);
-        const diffMs = end.getTime() - start.getTime();
+        let diffMs = end.getTime() - start.getTime();
+        // End time before (or equal to) start time is treated as an overnight
+        // entry (e.g. 22:00 - 06:00) rather than silently ignored.
+        if (diffMs <= 0) {
+          diffMs += 24 * 60 * 60 * 1000;
+        }
         const diffHours = diffMs / (1000 * 60 * 60);
-        
+
         if (diffHours > 0) {
           // Round to nearest minute (1/60 hour = 0.0167 hours) and format to 2 decimal places
           const minutes = Math.round(diffHours * 60);
@@ -328,7 +342,7 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
             : Number(template.unitPrice) || 0;
           
           newMaterial = {
-            id: Date.now().toString(),
+            id: generateUUID(),
             description: template.name,
             quantity: 1,
             unitPrice: unitPrice,
@@ -340,7 +354,7 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
         } else {
           // Fallback if template not found
           newMaterial = {
-            id: Date.now().toString(),
+            id: generateUUID(),
             description: '',
             quantity: 1,
             unitPrice: 0,
@@ -353,7 +367,7 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
         logger.error('Error loading material template:', error);
         // Fallback on error
         newMaterial = {
-          id: Date.now().toString(),
+          id: generateUUID(),
           description: '',
           quantity: 1,
           unitPrice: 0,
@@ -365,7 +379,7 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
     } else {
       // Manual entry
       newMaterial = {
-        id: Date.now().toString(),
+        id: generateUUID(),
         description: '',
         quantity: 1,
         unitPrice: 0,

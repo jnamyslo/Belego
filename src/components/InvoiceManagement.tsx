@@ -312,11 +312,14 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
               downloadBlob(pdfBlob, filename);
             }
 
-            // Download invoice attachments if they exist
-            if (invoice.attachments && invoice.attachments.length > 0) {
-              for (let i = 0; i < invoice.attachments.length; i++) {
-                const attachment = invoice.attachments[i];
-                
+            // Download invoice attachments if they exist and are selected (matches single-download behavior)
+            const bulkSelectedAttachments = selectedAttachmentIds.length > 0
+              ? (invoice.attachments || []).filter(att => selectedAttachmentIds.includes(att.id))
+              : [];
+            if (bulkSelectedAttachments.length > 0) {
+              for (let i = 0; i < bulkSelectedAttachments.length; i++) {
+                const attachment = bulkSelectedAttachments[i];
+
                 // Add delay between attachment downloads
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
@@ -340,8 +343,9 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
               }
             }
             
-            // Mark as sent if requested
-            if (markAsSent && (invoice.status === 'draft' || invoice.status === 'paid' || invoice.status === 'sent' || invoice.status === 'overdue')) {
+            // Mark as sent if requested — only promote drafts, never
+            // downgrade an already sent/paid/overdue invoice back to 'sent'.
+            if (markAsSent && invoice.status === 'draft') {
               await updateInvoice(invoice.id, { status: 'sent' });
             }
             
@@ -432,8 +436,10 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
             logger.error(`Error downloading attachment ${attachment.name} for invoice ${invoice.invoiceNumber}:`, error);
           }
         }
-      }// Mark as sent if requested
-        if (markAsSent && (invoice.status === 'draft' || invoice.status === 'paid' || invoice.status === 'sent' || invoice.status === 'overdue')) {
+      }
+        // Mark as sent if requested — only promote drafts, never
+        // downgrade an already sent/paid/overdue invoice back to 'sent'.
+        if (markAsSent && invoice.status === 'draft') {
           await updateInvoice(invoice.id, { status: 'sent' });
         }
       

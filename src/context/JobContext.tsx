@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { JobEntry, Customer, Company, Invoice } from '../types';
 import { apiService } from '../services/api';
 import { generateUUID } from '../utils/uuid';
@@ -56,7 +56,7 @@ export function JobProvider({ children, initialJobEntries = [] }: JobProviderPro
         updatedAt: new Date(),
       };
       setJobEntries(prev => [...prev, newJobEntry]);
-      throw error; // Re-throw to inform calling component
+      return newJobEntry;
     }
   }, []);
 
@@ -107,7 +107,7 @@ export function JobProvider({ children, initialJobEntries = [] }: JobProviderPro
     }
   }, []);
 
-  const value: JobContextType = {
+  const value: JobContextType = useMemo(() => ({
     jobEntries,
     setJobEntries,
     addJobEntry,
@@ -116,7 +116,7 @@ export function JobProvider({ children, initialJobEntries = [] }: JobProviderPro
     refreshJobEntries,
     addJobSignature,
     getJobEntryById,
-  };
+  }), [jobEntries, setJobEntries, addJobEntry, updateJobEntry, deleteJobEntry, refreshJobEntries, addJobSignature, getJobEntryById]);
 
   return (
     <JobContext.Provider value={value}>

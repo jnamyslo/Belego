@@ -7,6 +7,18 @@ import logger from '../utils/logger.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Escape HTML special characters to prevent HTML injection when embedding
+// user-supplied text (e.g. customText) into outbound email HTML.
+const escapeHtml = (text) => {
+  if (!text) return text;
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
 // Function to sanitize filename for email attachments
 const sanitizeFilename = (filename) => {
   if (!filename) return 'attachment';
@@ -386,7 +398,7 @@ export const sendInvoiceEmailMultiFormat = async (customerEmail, invoiceFormats,
     
     ${customText && customText.trim() ? `
     <div class="custom-message">
-      <p style="margin: 0;">${customText.replace(/\n/g, '<br>')}</p>
+      <p style="margin: 0;">${escapeHtml(customText).replace(/\n/g, '<br>')}</p>
     </div>
     ` : ''}
     
@@ -599,7 +611,7 @@ export const sendInvoiceEmail = async (customerEmail, invoicePDF, invoiceData, f
     if (customText && customText.trim()) {
       emailHTML += `
         <div style="background-color: #f0f8ff; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid ${companySettings.primary_color || '#2196f3'};">
-          <p style="margin: 0; white-space: pre-line;">${customText.replace(/\n/g, '<br>')}</p>
+          <p style="margin: 0; white-space: pre-line;">${escapeHtml(customText).replace(/\n/g, '<br>')}</p>
         </div>`;
     }
     
@@ -911,7 +923,7 @@ ${companySettings.name}
     
     ${customText && customText.trim() ? `
     <div class="custom-message">
-      <p style="margin: 0;">${customText.replace(/\n/g, '<br>')}</p>
+      <p style="margin: 0;">${escapeHtml(customText).replace(/\n/g, '<br>')}</p>
     </div>
     ` : ''}
     
@@ -1190,7 +1202,7 @@ export const sendReminderEmail = async (customerEmails, reminderPDF, invoiceData
   <div class="content">
     ${customText ? `
     <div class="custom-message">
-      <p style="margin: 0;">${customText.replace(/\n/g, '<br>')}</p>
+      <p style="margin: 0;">${escapeHtml(customText).replace(/\n/g, '<br>')}</p>
     </div>
     ` : ''}
     

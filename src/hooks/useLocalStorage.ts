@@ -31,16 +31,19 @@ export function useLocalStorage<T>(
   // Return a wrapped version of useState's setter function that persists the new value to localStorage
   const setValue = useCallback(
     (value: T | ((prev: T) => T)) => {
-      try {
-        // Allow value to be a function so we have same API as useState
-        const valueToStore = value instanceof Function ? value(storedValue) : value;
-        setStoredValue(valueToStore);
-        window.localStorage.setItem(key, JSON.stringify(valueToStore));
-      } catch (error) {
-        logger.warn(`Error setting localStorage key "${key}":`, error);
-      }
+      // Allow value to be a function so we have same API as useState.
+      // Compute from the updater form so batched calls don't clobber each other.
+      setStoredValue(prev => {
+        const valueToStore = value instanceof Function ? value(prev) : value;
+        try {
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) {
+          logger.warn(`Error setting localStorage key "${key}":`, error);
+        }
+        return valueToStore;
+      });
     },
-    [key, storedValue]
+    [key]
   );
 
   // Remove the value from localStorage

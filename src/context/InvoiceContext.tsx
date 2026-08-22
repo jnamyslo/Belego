@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { Invoice } from '../types';
 import { apiService } from '../services/api';
 import { generateUUID } from '../utils/uuid';
@@ -93,7 +93,7 @@ export function InvoiceProvider({ children, initialInvoices = [] }: InvoiceProvi
     }
   }, []);
 
-  const value: InvoiceContextType = {
+  const value: InvoiceContextType = useMemo(() => ({
     invoices,
     setInvoices,
     addInvoice,
@@ -101,7 +101,7 @@ export function InvoiceProvider({ children, initialInvoices = [] }: InvoiceProvi
     deleteInvoice,
     refreshInvoices,
     getInvoiceById,
-  };
+  }), [invoices, setInvoices, addInvoice, updateInvoice, deleteInvoice, refreshInvoices, getInvoiceById]);
 
   return (
     <InvoiceContext.Provider value={value}>

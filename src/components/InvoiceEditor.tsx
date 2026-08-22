@@ -555,6 +555,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
   });
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [attachments, setAttachments] = useState<InvoiceAttachment[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Document Preview state
   const [documentPreview, setDocumentPreview] = useState<{
@@ -586,7 +587,9 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
         .sort((a, b) => (a.order || 999) - (b.order || 999))
         .map((item, index) => ({
           ...item,
-          order: item.order || index + 1  // Fallback to index-based order for existing items
+          order: item.order || index + 1,  // Fallback to index-based order for existing items
+          // Bei Kleinunternehmerregelung immer MwSt. auf 0 normalisieren
+          taxRate: company?.isSmallBusiness ? 0 : item.taxRate
         }));
       setItems(sortedItems);
       setAttachments(invoice.attachments || []);
@@ -794,18 +797,24 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
   };
 
   const calculateTotals = () => {
+    // Bei Kleinunternehmerregelung MwSt. für alle Positionen auf 0 normalisieren,
+    // unabhängig vom gespeicherten taxRate-Wert (z.B. bei geladenen Bestandspositionen)
+    const normalizedItems = company?.isSmallBusiness
+      ? items.map(item => ({ ...item, taxRate: 0 }))
+      : items;
+
     // Verwende die neue Rabattberechnungsfunktion
     const invoiceData = {
-      items,
+      items: normalizedItems,
       globalDiscountType: formData.globalDiscountType,
       globalDiscountValue: formData.globalDiscountValue,
       globalDiscountAmount: formData.globalDiscountAmount
     };
-    
+
     const calculation = calculateInvoiceWithDiscounts(invoiceData);
-    
+
     // Group items by tax rate for breakdown display
-    const taxBreakdown = items.reduce((acc, item) => {
+    const taxBreakdown = normalizedItems.reduce((acc, item) => {
       const itemTotal = (item.quantity * item.unitPrice) - (item.discountAmount || 0);
       const taxRate = item.taxRate;
       const taxAmount = itemTotal * (taxRate / 100);
@@ -835,7 +844,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
     }
     
     // Check if invoice has only 0% tax rate
-    const hasOnlyZeroTax = items.length > 0 && items.every(item => item.taxRate === 0);
+    const hasOnlyZeroTax = normalizedItems.length > 0 && normalizedItems.every(item => item.taxRate === 0);
     
     return { 
       subtotal: calculation.subtotal,
@@ -889,7 +898,13 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
       return;
     }
 
+    setIsSubmitting(true);
+
     const calculation = calculateTotals();
+    // Bei Kleinunternehmerregelung MwSt. auch in den gespeicherten Positionen auf 0 normalisieren
+    const itemsToSave = company?.isSmallBusiness
+      ? items.map(item => ({ ...item, taxRate: 0 }))
+      : items;
 
     const invoiceData: Omit<Invoice, 'id' | 'createdAt'> = {
       invoiceNumber: invoice ? formData.invoiceNumber : '', // Keep existing number for updates, empty for new invoices
@@ -897,7 +912,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
       customerName: customer.name,
       issueDate: new Date(formData.issueDate),
       dueDate: new Date(formData.dueDate),
-      items,
+      items: itemsToSave,
       subtotal: calculation.subtotal,
       taxAmount: calculation.taxAmount,
       total: calculation.total,
@@ -912,6 +927,8 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
     try {
       if (invoice) {
         await updateInvoice(invoice.id, invoiceData);
+        // Refresh invoices in other components
+        await refreshInvoices();
       } else {
         await addInvoice(invoiceData);
         // Refresh invoices in other components
@@ -921,6 +938,8 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
     } catch (error) {
       logger.error('Failed to save invoice', { error: (error as Error).message });
       // You might want to show an error message to the user here
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1391,15 +1410,17 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end sm:gap-0 sm:space-x-4">
           <button
             type="submit"
-            className="w-full sm:w-auto px-6 py-3 sm:py-2 btn-primary rounded-lg transition-colors flex items-center justify-center space-x-2 order-1 sm:order-2"
+            disabled={isSubmitting}
+            className="w-full sm:w-auto px-6 py-3 sm:py-2 btn-primary rounded-lg transition-colors flex items-center justify-center space-x-2 order-1 sm:order-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="h-4 w-4" />
-            <span>{invoice ? 'Aktualisieren' : 'Erstellen'}</span>
+            <span>{isSubmitting ? 'Wird gespeichert...' : (invoice ? 'Aktualisieren' : 'Erstellen')}</span>
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors order-2 sm:order-1"
+            disabled={isSubmitting}
+            className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors order-2 sm:order-1 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Abbrechen
           </button>

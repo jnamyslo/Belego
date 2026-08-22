@@ -261,12 +261,17 @@ Wir fordern Sie hiermit letztmalig auf, den Betrag unverzüglich, spätestens je
  * @returns {Promise<import('pg').QueryResult>}
  */
 export async function query(text, params, timeoutMs = 30000) {
+  // Validate timeoutMs before interpolating it into the SQL string below -
+  // SET statement_timeout doesn't support query parameters, so this value
+  // must be a safe, non-negative integer rather than arbitrary caller input.
+  const safeTimeoutMs = Number.isInteger(timeoutMs) && timeoutMs >= 0 ? timeoutMs : 30000;
+
   const client = await pool.connect();
   const startTime = Date.now();
-  
+
   try {
     // Set statement timeout for this specific query
-    await client.query(`SET statement_timeout = ${timeoutMs}`);
+    await client.query(`SET statement_timeout = ${safeTimeoutMs}`);
     
     const result = await client.query(text, params);
     

@@ -1,6 +1,7 @@
 /**
  * Utility functions for dynamic favicon management
  */
+import logger from './logger';
 
 /**
  * Updates the favicon and various app icons based on the provided icon URL
@@ -24,7 +25,7 @@ export const updateFavicon = (iconUrl: string | null) => {
       const link = document.createElement('link');
       link.rel = rel;
       link.type = getIconType(iconUrl);
-      link.sizes = size;
+      link.setAttribute('sizes', size);
       link.href = iconUrl;
       document.head.appendChild(link);
     });
@@ -32,7 +33,7 @@ export const updateFavicon = (iconUrl: string | null) => {
     // Add Apple Touch Icon
     const appleTouchIcon = document.createElement('link');
     appleTouchIcon.rel = 'apple-touch-icon';
-    appleTouchIcon.sizes = '180x180';
+    appleTouchIcon.setAttribute('sizes', '180x180');
     appleTouchIcon.href = iconUrl;
     document.head.appendChild(appleTouchIcon);
 

@@ -1,23 +1,38 @@
 import express from 'express';
+import os from 'os';
+import net from 'net';
+import dns from 'dns';
 import { query } from '../database.js';
 import logger from '../utils/logger.js';
 import { testEmailConnection } from '../services/emailService.js';
+import { parsePagination } from '../utils/routeHelpers.js';
 
 const router = express.Router();
+
+// Escape HTML special characters to prevent HTML injection when embedding
+// user-supplied text (e.g. custom_message) into outbound email HTML.
+const escapeHtml = (text) => {
+  if (!text) return text;
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
 
 // Get email history with pagination and filtering
 router.get('/history', async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 50,
       filter = 'all', // 'all', 'sent', 'failed'
       search = '', // search in recipient_email, subject, customer_name
       startDate,
       endDate
     } = req.query;
 
-    const offset = (page - 1) * limit;
+    // Clamp page/limit to sane bounds (limit capped at 100) instead of trusting the raw query param.
+    const { page, limit, offset } = parsePagination(req.query, { page: 1, limit: 50 });
     let whereClause = 'WHERE 1=1';
     const params = [];
     let paramIndex = 1;
@@ -442,9 +457,9 @@ router.post('/debug-config', async (req, res) => {
         environment: envConfig,
         database: dbConfig,
         containerInfo: {
-          hostname: require('os').hostname(),
-          platform: require('os').platform(),
-          networkInterfaces: require('os').networkInterfaces()
+          hostname: os.hostname(),
+          platform: os.platform(),
+          networkInterfaces: os.networkInterfaces()
         }
       }
     });
@@ -657,9 +672,8 @@ router.post('/test-network', async (req, res) => {
       });
     }
 
-    const net = require('net');
-    const dns = require('dns').promises;
-    
+    const dnsPromises = dns.promises;
+
     const results = {
       dns: null,
       tcp: null,
@@ -669,7 +683,7 @@ router.post('/test-network', async (req, res) => {
     try {
       // DNS Lookup Test
       const dnsStart = Date.now();
-      const addresses = await dns.lookup(host);
+      const addresses = await dnsPromises.lookup(host);
       results.dns = {
         success: true,
         address: addresses.address,
@@ -792,7 +806,7 @@ router.post('/send-test-email', async (req, res) => {
         <p>Diese Test-E-Mail wurde von Ihrem Belego-System gesendet.</p>
         ${custom_message ? `
           <div style="background-color: #f0f8ff; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #2563eb;">
-            <p style="margin: 0; white-space: pre-line;">${custom_message}</p>
+            <p style="margin: 0; white-space: pre-line;">${escapeHtml(custom_message)}</p>
           </div>
         ` : ''}
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">

@@ -297,6 +297,7 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
     
     setIsExporting('bulk');
     try {
+      let successCount = 0;
       for (const quoteId of selectedQuoteIds) {
         const quote = quotes.find(q => q.id === quoteId);
         if (quote) {
@@ -304,10 +305,15 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
           if (customer) {
             const pdfBlob = await generateQuotePDF(quote, { company, customer });
             downloadBlob(pdfBlob, `${quote.quoteNumber}.pdf`);
+            successCount++;
           }
         }
       }
-      alert(`${selectedQuoteIds.length} Angebot(e) erfolgreich heruntergeladen.`);
+      if (successCount === selectedQuoteIds.length) {
+        alert(`${successCount} Angebot(e) erfolgreich heruntergeladen.`);
+      } else {
+        alert(`${successCount} von ${selectedQuoteIds.length} Angebot(en) erfolgreich heruntergeladen.`);
+      }
     } catch (error) {
       logger.error('Error downloading quotes:', error);
       alert('Fehler beim Herunterladen der Angebote.');
@@ -431,16 +437,32 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
         for (const quote of emailModal.bulkQuotes) {
           try {
             const customer = customers.find(c => c.id === quote.customerId);
-            if (!customer?.email && (!customer?.additionalEmails || customer.additionalEmails.length === 0)) {
+            if (!customer?.email && (!customer?.additionalEmails || customer.additionalEmails.length === 0)
+                && (!selectedEmails || selectedEmails.length === 0) && (!manualEmails || manualEmails.length === 0)) {
               logger.warn(`No email for customer of quote ${quote.quoteNumber}`);
               errorCount++;
               continue;
             }
 
-            // Process attachments for this quote
-            const processedAttachments = attachments && attachments.length > 0 
+            // Process attachments for this quote (uploaded files apply to every quote)
+            const processedAttachments = attachments && attachments.length > 0
               ? await processAttachments(attachments)
               : [];
+
+            // Honor quote-attachment selection from the modal: only applies to quotes
+            // that actually own an attachment with one of the selected ids.
+            if (selectedQuoteAttachmentIds && selectedQuoteAttachmentIds.length > 0 && quote.attachments) {
+              const selectedOwnAttachments = quote.attachments.filter(att =>
+                selectedQuoteAttachmentIds.includes(att.id)
+              );
+              for (const storedAttachment of selectedOwnAttachments) {
+                processedAttachments.push({
+                  name: storedAttachment.name,
+                  content: storedAttachment.content,
+                  contentType: storedAttachment.contentType
+                });
+              }
+            }
 
             // Generate PDF for this quote
             const pdfBlob = await generateQuotePDF(quote, {
@@ -453,9 +475,12 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
             const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
             const pdfBase64 = btoa(binaryString);
 
-            // Send email for this quote
-            const emailAddresses = [customer!.email, ...(customer!.additionalEmails?.filter(e => e.isActive).map(e => e.email) || [])].filter(Boolean);
-            
+            // Send email for this quote: this quote's own customer emails, plus any
+            // extra recipients (selected emails / manual emails) the user picked in the modal
+            const customerEmails = [customer?.email, ...(customer?.additionalEmails?.filter(e => e.isActive).map(e => e.email) || [])];
+            const extraEmails = [...(selectedEmails || []), ...(manualEmails || [])];
+            const emailAddresses = Array.from(new Set([...customerEmails, ...extraEmails].filter(Boolean))) as string[];
+
             await apiService.sendQuoteEmail(
               quote.id,
               emailAddresses,
@@ -493,12 +518,15 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
         return;
       } finally {
         setIsBulkOperation(false);
+        setIsEmailSending(false);
       }
     }
 
     // Single quote mode (existing logic)
     if (!emailModal.customer) return;
-    
+
+    setIsSendingEmail(emailModal.quote.id);
+
     try {
       // Collect all email addresses
       const allEmails: string[] = [];
@@ -576,6 +604,7 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
       alert('Fehler beim E-Mail-Versand: ' + (error as Error).message);
     } finally {
       setIsEmailSending(false);
+      setIsSendingEmail(null);
     }
   };
 

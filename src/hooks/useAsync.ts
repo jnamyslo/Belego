@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 interface UseAsyncState<T> {
   data: T | null;
@@ -89,7 +89,7 @@ export function useAsyncValue<T>(
   const memoizedFn = useCallback(asyncFunction, deps);
 
   // Execute on mount and when deps change
-  useState(() => {
+  useEffect(() => {
     let mounted = true;
 
     const execute = async () => {
@@ -113,7 +113,7 @@ export function useAsyncValue<T>(
     return () => {
       mounted = false;
     };
-  });
+  }, [memoizedFn]);
 
   return state;
 }

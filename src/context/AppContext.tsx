@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { apiService } from '../services/api';
 import { setupMetaTags } from '../utils/faviconUtils';
 import logger from '../utils/logger';
@@ -101,9 +101,10 @@ function DataLoader({ children }: DataLoaderProps) {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
+  const loadingValue = useMemo<LoadingContextType>(() => ({ loading, setLoading }), [loading]);
 
   return (
-    <LoadingContext.Provider value={{ loading, setLoading }}>
+    <LoadingContext.Provider value={loadingValue}>
       <CustomerProvider>
         <InvoiceProvider>
           <QuoteProvider>

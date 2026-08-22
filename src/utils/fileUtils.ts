@@ -1,6 +1,7 @@
 /**
  * Utility functions for file handling
  */
+import logger from './logger';
 
 export interface AttachmentFile {
   id: string;
@@ -48,7 +49,7 @@ export const processAttachments = async (attachments: AttachmentFile[]): Promise
         contentType: attachment.file.type || 'application/octet-stream'
       });
     } catch (error) {
-      logger.error('Fehler beim Verarbeiten des Anhangs:', attachment.name, error);
+      logger.error('Fehler beim Verarbeiten des Anhangs:', { name: attachment.name, error });
       throw new Error(`Fehler beim Verarbeiten der Datei "${attachment.name}"`);
     }
   }

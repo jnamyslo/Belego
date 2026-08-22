@@ -143,10 +143,15 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
             const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
             matchesDate = jobDate >= weekAgo;
             break;
-          case 'month':
-            const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+          case 'month': {
+            // Clamp the day to the previous month's length so e.g. the 31st
+            // doesn't overflow into the following month (new Date(y, m, 32)
+            // silently rolls forward).
+            const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+            const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, Math.min(now.getDate(), lastDayPrevMonth));
             matchesDate = jobDate >= monthAgo;
             break;
+          }
         }
       }
       
@@ -217,6 +222,8 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
     try {
       if (editingJob) {
         await updateJobEntry(editingJob.id, jobData);
+        // Refresh job entries in other components
+        await refreshJobEntries();
       } else {
         await addJobEntry(jobData);
         // Refresh job entries in other components
@@ -320,11 +327,22 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
     
     setIsBulkOperation(true);
     try {
-      for (const jobId of selectedJobIds) {
+      // Skip invoiced jobs — their status is locked (GoBD), matching the
+      // single-job guard in handleStatusChange.
+      const targetJobs = selectedJobIds.filter(jobId => {
+        const job = jobEntries.find((j: any) => j.id === jobId);
+        return job?.status !== 'invoiced';
+      });
+      const skippedCount = selectedJobIds.length - targetJobs.length;
+
+      for (const jobId of targetJobs) {
         await updateJobEntry(jobId, { status: newStatus });
       }
       setSelectedJobIds([]);
-      alert(`${selectedJobIds.length} Auftrag/Aufträge erfolgreich aktualisiert.`);
+      const message = skippedCount > 0
+        ? `${targetJobs.length} Auftrag/Aufträge aktualisiert. ${skippedCount} abgerechnete(r) Auftrag/Aufträge übersprungen.`
+        : `${targetJobs.length} Auftrag/Aufträge erfolgreich aktualisiert.`;
+      alert(message);
     } catch (error) {
       logger.error('Error updating job statuses:', error);
       alert('Fehler beim Aktualisieren der Aufträge.');
@@ -337,20 +355,22 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
     if (selectedJobIds.length === 0) return;
     
     setIsBulkOperation(true);
+    let successCount = 0;
     try {
       for (const jobId of selectedJobIds) {
         const job = jobEntries.find(j => j.id === jobId);
         const customer = job ? customers.find(c => c.id === job.customerId) : null;
-        
+
         if (job && customer && company) {
           const pdfBlob = await generateJobPDF(job, {
             company,
             customer
           });
-          
+
           const fileName = `Auftrag_${job.jobNumber || job.id}_${job.customerName || customer.name}.pdf`;
           downloadBlob(pdfBlob, fileName);
-          
+          successCount++;
+
           // Add delay between downloads to prevent browser issues
           if (selectedJobIds.indexOf(jobId) < selectedJobIds.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -358,7 +378,7 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
         }
       }
       setSelectedJobIds([]);
-      alert(`${selectedJobIds.length} Auftrag/Aufträge erfolgreich heruntergeladen.`);
+      alert(`${successCount} Auftrag/Aufträge erfolgreich heruntergeladen.`);
     } catch (error) {
       logger.error('Error downloading jobs:', error);
       alert('Fehler beim Herunterladen der Aufträge.');
@@ -491,9 +511,15 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
   }
 
   if (showInvoiceGenerator) {
+    // Only pass completed jobs — bulk selection can include non-completed jobs,
+    // but only completed jobs may be invoiced (see handleBulkInvoiceGeneration).
+    const completedSelectedJobIds = selectedJobIds.filter(jobId => {
+      const job = jobEntries.find(j => j.id === jobId);
+      return job && job.status === 'completed';
+    });
     return (
       <JobInvoiceGenerator
-        selectedJobIds={selectedJobIds}
+        selectedJobIds={completedSelectedJobIds}
         onClose={() => {
           setShowInvoiceGenerator(false);
           setSelectedJobIds([]);
@@ -550,7 +576,7 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
                       defaultValue=""
                     >
                       <option value="">Wählen...</option>
-                      <option value="pending">Ausstehend</option>
+                      <option value="draft">Entwurf</option>
                       <option value="in-progress">In Bearbeitung</option>
                       <option value="completed">Abgeschlossen</option>
                       <option value="invoiced">Abgerechnet</option>
@@ -767,7 +793,7 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
             <Briefcase className="h-12 w-12 lg:h-16 lg:w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg lg:text-xl font-medium text-gray-900 mb-2">Keine Aufträge gefunden</h3>
             <p className="text-gray-500 mb-6">
-              {searchTerm || statusFilter !== 'all' || customerFilter !== 'all' || dateFilter !== 'all'
+              {jobEntries.length > 0 && (searchTerm || statusFilter !== 'all' || customerFilter !== 'all' || dateFilter !== 'all')
                 ? 'Versuchen Sie andere Filter oder erstellen Sie einen neuen Auftrag.'
                 : 'Erstellen Sie Ihren ersten Auftrag, um loszulegen.'}
             </p>
@@ -1265,14 +1291,6 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
         onSave={handleSignatureSave}
         title="Kundenunterschrift"
         initialCustomerName={signingJob?.customerName || ''}
-      />
-
-      {/* Document Preview Modal */}
-      <DocumentPreview
-        isOpen={documentPreview.isOpen}
-        onClose={handleClosePreview}
-        documents={documentPreview.documents}
-        initialIndex={documentPreview.initialIndex}
       />
     </div>
   );

@@ -25,6 +25,10 @@ export async function createQuote(data) {
     globalDiscountAmount = null,
   } = data;
 
+  const maxAttempts = 5;
+  let lastError;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
   const client = await pool.connect();
 
   try {
@@ -38,6 +42,7 @@ export async function createQuote(data) {
     const customerName = customerResult.rows[0].name;
 
     // Generate quote number - format: AN-YYYY-XXX
+    // Regenerated on each attempt in case a concurrent request just took this number.
     const quoteYear = new Date(issueDate).getFullYear();
     const yearPattern = `AN-${quoteYear}-%`;
     const lastQuoteResult = await client.query('SELECT quote_number FROM quotes WHERE quote_number LIKE $1 ORDER BY created_at DESC LIMIT 1', [yearPattern]);
@@ -141,12 +146,16 @@ export async function createQuote(data) {
 
     const total = discountedSubtotal + taxAmount;
 
-    // Insert quote - use subtotalAfterItemDiscounts as the stored subtotal
+    // Insert quote - store the GROSS subtotal (before any discounts), matching
+    // invoiceService and what the PDF/editor expect: the "Zwischensumme" line is
+    // gross and item/global discounts are subtracted from it separately. Storing
+    // the post-item-discount value here caused the Nettobetrag to double-subtract
+    // the item discount (e.g. 5.00 -10% shown as 4.00 instead of 4.50).
     const quoteResult = await client.query(`
       INSERT INTO quotes (quote_number, customer_id, customer_name, issue_date, valid_until, subtotal, tax_amount, total, status, notes, global_discount_type, global_discount_value, global_discount_amount)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
-    `, [quoteNumber, customerId, customerName, issueDate, validUntil, subtotalAfterItemDiscounts, taxAmount, total, status, notes, globalDiscountType, globalDiscountValue, finalGlobalDiscountAmount]);
+    `, [quoteNumber, customerId, customerName, issueDate, validUntil, subtotal, taxAmount, total, status, notes, globalDiscountType, globalDiscountValue, finalGlobalDiscountAmount]);
 
     const quoteId = quoteResult.rows[0].id;
 
@@ -173,10 +182,17 @@ export async function createQuote(data) {
     return await findQuoteById(quoteId);
   } catch (error) {
     await client.query('ROLLBACK');
+    if (error.code === '23505' && attempt < maxAttempts - 1) {
+      lastError = error;
+      continue;
+    }
     throw error;
   } finally {
     client.release();
   }
+  }
+
+  throw lastError;
 }
 
 export async function updateQuote(id, data) {

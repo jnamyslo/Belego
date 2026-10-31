@@ -483,7 +483,7 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
     try {
       documents = createJobAttachmentPreviewDocuments(await withJobContent(job));
     } catch (error) {
-      logger.error('Fehler beim Laden der Anhänge:', error);
+      logger.error('Fehler beim Laden der Anhänge:', { error: String(error) });
       alert('Anhänge konnten nicht geladen werden.');
       return;
     }

@@ -372,7 +372,7 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
     try {
       documents = createQuoteAttachmentPreviewDocuments(await withQuoteContent(quote));
     } catch (error) {
-      logger.error('Fehler beim Laden der Anhänge:', error);
+      logger.error('Fehler beim Laden der Anhänge:', { error: String(error) });
       alert('Anhänge konnten nicht geladen werden.');
       return;
     }

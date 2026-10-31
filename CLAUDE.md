@@ -36,7 +36,7 @@ docker compose --env-file .env.$INSTANCE -f docker-compose.yml exec backend sh
 docker exec -it belego-$INSTANCE-db psql -U <user> <db>
 ```
 
-No test framework exists. No automated test suites.
+Tests: Vitest in frontend (`npm test`, `src/**/__tests__`) and backend (`backend/tests`, nur Contract-Tests für adm-zip/nodemailer). Weiterhin in Docker ausführen, z. B. `docker run --rm -v "$PWD":/src:ro node:24-alpine sh -c "mkdir /app && cd /src && tar cf - --exclude=node_modules . | tar xf - -C /app && cd /app && npm ci && npm test"` (im jeweiligen Ordner; Bind-Mount von `node_modules` ist auf macOS unzuverlässig).
 
 ## Architecture
 

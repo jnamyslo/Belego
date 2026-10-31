@@ -12,7 +12,8 @@ import { EmailSendModal } from './EmailSendModal';
 import { apiService } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
 import { generateQuotePDF, downloadBlob } from '../utils/pdfGenerator';
-import { DocumentPreview, PreviewDocument, createQuoteAttachmentPreviewDocuments } from './DocumentPreview';
+import { DocumentPreview, PreviewDocument } from './DocumentPreview';
+import { createQuoteAttachmentPreviewDocuments } from '../utils/previewDocuments';
 import { processAttachments, AttachmentFile } from '../utils/fileUtils';
 import { blobToBase64 } from '../utils/blobUtils';
 

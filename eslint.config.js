@@ -24,5 +24,11 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
     },
+  },
+  {
+    // Context-Dateien exportieren bewusst Provider und zugehörige Hooks/Helfer
+    // gemeinsam (übliches React-Context-Muster). Betrifft nur Fast Refresh in der Entwicklung.
+    files: ['src/context/**/*.{ts,tsx}'],
+    rules: { 'react-refresh/only-export-components': 'off' },
   }
 );

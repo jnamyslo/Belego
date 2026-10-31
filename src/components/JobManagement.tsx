@@ -10,7 +10,8 @@ import { JobEntryForm } from './JobEntryForm';
 import { JobInvoiceGenerator } from './JobInvoiceGenerator';
 import { ConfirmationModal } from './ConfirmationModal';
 import { SignaturePad } from './SignaturePad';
-import { DocumentPreview, createJobAttachmentPreviewDocuments, PreviewDocument } from './DocumentPreview';
+import { DocumentPreview, PreviewDocument } from './DocumentPreview';
+import { createJobAttachmentPreviewDocuments } from '../utils/previewDocuments';
 import { generateJobPDF, downloadBlob } from '../utils/pdfGenerator';
 import { calculateTotalHours } from '../utils/jobUtils';
 

@@ -124,8 +124,8 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
     } else {
       // Für neue Aufträge: keine Standard-Zeiteinträge, Nutzer muss explizit hinzufügen
       // Note: For new jobs, we can't use customer-specific rates yet since customer isn't selected
-      const defaultRate = getHourlyRates().find((rate: any) => rate.isDefault);
-      const initialFormData: any = {
+      const defaultRate = getHourlyRates().find((rate) => rate.isDefault);
+      const initialFormData: Omit<JobEntry, 'id' | 'createdAt' | 'updatedAt'> = {
         jobNumber: '', // Will be auto-generated
         externalJobNumber: '',
         customerId: '',
@@ -188,7 +188,7 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
   const selectedCustomerDisplayName = selectedCustomer ? selectedCustomer.name : '';
     
   // Handle customer selection
-  const handleCustomerSelectDropdown = (customer: any) => {
+  const handleCustomerSelectDropdown = (customer: Customer) => {
     handleCustomerChange(customer.id);
     setCustomerSearchTerm(customer.name);
     setIsCustomerDropdownOpen(false);
@@ -214,7 +214,7 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
 
   const handleCustomerChange = (customerId: string) => {
     const customer = customers.find(c => c.id === customerId);
-    setFormData((prev: any) => ({
+    setFormData((prev) => ({
       ...prev,
       customerId,
       customerName: customer?.name || ''
@@ -223,14 +223,14 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
 
   const addTimeEntry = () => {
     const availableRates = getHourlyRatesForCustomer(formData.customerId);
-    const defaultRate = availableRates.find((rate: any) => rate.isDefault);
+    const defaultRate = availableRates.find((rate) => rate.isDefault);
     const newTimeEntry = createDefaultTimeEntry(
       defaultRate ? defaultRate.rate : 0,
       defaultRate ? defaultRate.id : '',
       defaultRate?.taxRate != null ? defaultRate.taxRate : 19 // Use hourly rate tax rate or default to 19%
     );
     
-    setFormData((prev: any) => ({
+    setFormData((prev) => ({
       ...prev,
       timeEntries: [...(prev.timeEntries || []), newTimeEntry]
     }));
@@ -238,11 +238,11 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
 
   const addTimeEntryFromTemplate = (hourlyRateId: string) => {
     // Search in combined templates (both general and customer-specific)
-    const template = getCombinedHourlyRatesForCustomer(formData.customerId).find((rate: any) => rate.id === hourlyRateId);
+    const template = getCombinedHourlyRatesForCustomer(formData.customerId).find((rate) => rate.id === hourlyRateId);
     if (!template) return;
     
     const newTimeEntry = createDefaultTimeEntry(
-      parseFloat(template.rate || 0),
+      parseFloat(String(template.rate || 0)),
       template.id,
       template.taxRate != null ? template.taxRate : 19
     );
@@ -250,21 +250,21 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
     // Set description to template name
     newTimeEntry.description = template.name;
     
-    setFormData((prev: any) => ({
+    setFormData((prev) => ({
       ...prev,
       timeEntries: [...(prev.timeEntries || []), newTimeEntry]
     }));
   };
 
   const updateTimeEntry = (index: number, field: keyof JobTimeEntry, value: string | number) => {
-    setFormData((prev: any) => {
+    setFormData((prev) => {
       const timeEntries = [...(prev.timeEntries || [])];
       timeEntries[index] = { ...timeEntries[index], [field]: value };
       
       // Auto-calculate total for hoursWorked and hourlyRate changes
       if (field === 'hoursWorked' || field === 'hourlyRate') {
-        const hours = parseFloat(timeEntries[index].hoursWorked) || 0;
-        const rate = parseFloat(timeEntries[index].hourlyRate) || 0;
+        const hours = parseFloat(String(timeEntries[index].hoursWorked)) || 0;
+        const rate = parseFloat(String(timeEntries[index].hourlyRate)) || 0;
         timeEntries[index].total = hours * rate;
       }
       
@@ -285,15 +285,15 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
           if (diffHours > 0) {
             const minutes = Math.round(diffHours * 60);
             timeEntries[index].hoursWorked = Math.round((minutes / 60) * 100) / 100;
-            const hours = parseFloat(timeEntries[index].hoursWorked) || 0;
-            const rate = parseFloat(timeEntries[index].hourlyRate) || 0;
+            const hours = parseFloat(String(timeEntries[index].hoursWorked)) || 0;
+            const rate = parseFloat(String(timeEntries[index].hourlyRate)) || 0;
             timeEntries[index].total = hours * rate;
           }
         }
       }
       
       // Update total hours in main job data for backward compatibility
-      const totalHours = timeEntries.reduce((sum, entry) => sum + (parseFloat(entry.hoursWorked) || 0), 0);
+      const totalHours = timeEntries.reduce((sum, entry) => sum + (parseFloat(String(entry.hoursWorked)) || 0), 0);
       
       return { 
         ...prev, 
@@ -304,9 +304,9 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
   };
 
   const removeTimeEntry = (index: number) => {
-    setFormData((prev: any) => {
-      const timeEntries = (prev.timeEntries || []).filter((_: any, i: number) => i !== index);
-      const totalHours = timeEntries.reduce((sum: number, entry: any) => sum + (parseFloat(entry.hoursWorked) || 0), 0);
+    setFormData((prev) => {
+      const timeEntries = (prev.timeEntries || []).filter((_, i) => i !== index);
+      const totalHours = timeEntries.reduce((sum: number, entry) => sum + (parseFloat(String(entry.hoursWorked)) || 0), 0);
       
       return { 
         ...prev, 
@@ -325,7 +325,7 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
       // Use template data - safely handle potential errors
       try {
         const templates = getCombinedMaterialTemplatesForCustomer(formData.customerId) || [];
-        const template = templates.find((t: any) => t.id === templateId);
+        const template = templates.find((t) => t.id === templateId);
         
         if (template) {
           // Ensure unitPrice is a number - handle both string and number formats
@@ -394,8 +394,8 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
       
       // Auto-calculate total for quantity and unitPrice changes
       if (field === 'quantity' || field === 'unitPrice') {
-        const quantity = parseFloat(materials[index].quantity) || 0;
-        const unitPrice = parseFloat(materials[index].unitPrice) || 0;
+        const quantity = parseFloat(String(materials[index].quantity)) || 0;
+        const unitPrice = parseFloat(String(materials[index].unitPrice)) || 0;
         materials[index].total = quantity * unitPrice;
       }
       
@@ -725,9 +725,9 @@ Musterstraße 123
                     defaultValue=""
                   >
                     <option value="">Stundensatz wählen...</option>
-                    {getCombinedHourlyRatesForCustomer(formData.customerId).map((rate: any) => (
+                    {getCombinedHourlyRatesForCustomer(formData.customerId).map((rate) => (
                       <option key={rate.id} value={rate.id}>
-                        {rate.displayName} - {parseFloat(rate.rate || 0).toFixed(2)}€/h
+                        {rate.displayName} - {parseFloat(String(rate.rate || 0)).toFixed(2)}€/h
                       </option>
                     ))}
                   </select>
@@ -821,7 +821,7 @@ Musterstraße 123
                           </label>
                           <input
                             type="text"
-                            value={(parseFloat(timeEntry.total) || 0).toFixed(2)}
+                            value={(parseFloat(String(timeEntry.total)) || 0).toFixed(2)}
                             readOnly
                             className="w-full px-1 py-1 border border-gray-300 rounded text-xs bg-gray-100"
                           />
@@ -876,7 +876,7 @@ Musterstraße 123
                           </label>
                           <input
                             type="text"
-                            value={`${parseFloat(timeEntry.hourlyRate || 0).toFixed(2)}€`}
+                            value={`${parseFloat(String(timeEntry.hourlyRate || 0)).toFixed(2)}€`}
                             readOnly
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-gray-100"
                           />
@@ -911,7 +911,7 @@ Musterstraße 123
                           </label>
                           <input
                             type="text"
-                            value={(parseFloat(timeEntry.total) || 0).toFixed(2)}
+                            value={(parseFloat(String(timeEntry.total)) || 0).toFixed(2)}
                             readOnly
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-gray-100"
                           />
@@ -925,13 +925,13 @@ Musterstraße 123
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium text-blue-900">Gesamtstunden:</span>
                     <span className="font-bold text-blue-900">
-                      {(formData.timeEntries.reduce((sum, entry) => sum + (parseFloat(entry.hoursWorked) || 0), 0)).toFixed(2)}h
+                      {(formData.timeEntries.reduce((sum, entry) => sum + (parseFloat(String(entry.hoursWorked)) || 0), 0)).toFixed(2)}h
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm mt-1">
                     <span className="font-medium text-blue-900">Gesamtkosten:</span>
                     <span className="font-bold text-blue-900">
-                      {(formData.timeEntries.reduce((sum, entry) => sum + (parseFloat(entry.total) || 0), 0)).toFixed(2)}€
+                      {(formData.timeEntries.reduce((sum, entry) => sum + (parseFloat(String(entry.total)) || 0), 0)).toFixed(2)}€
                     </span>
                   </div>
                 </div>
@@ -968,9 +968,9 @@ Musterstraße 123
                   {(() => {
                     try {
                       const templates = getCombinedMaterialTemplatesForCustomer(formData.customerId) || [];
-                      return templates.map((template: any) => (
+                      return templates.map((template) => (
                         <option key={template.id} value={template.id}>
-                          {template.displayName} - {parseFloat(template.unitPrice || 0).toFixed(2)}€/{template.unit || 'Stück'}
+                          {template.displayName} - {parseFloat(String(template.unitPrice || 0)).toFixed(2)}€/{template.unit || 'Stück'}
                         </option>
                       ));
                     } catch (error) {
@@ -1091,7 +1091,7 @@ Musterstraße 123
                           <label className="block text-xs font-medium text-gray-700 mb-1">Gesamt €</label>
                           <input
                             type="text"
-                            value={(parseFloat(material.total) || 0).toFixed(2)}
+                            value={(parseFloat(String(material.total)) || 0).toFixed(2)}
                             readOnly
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-gray-100"
                           />
@@ -1113,7 +1113,7 @@ Musterstraße 123
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium text-blue-900">Gesamtkosten Materialien:</span>
                     <span className="font-bold text-blue-900">
-                      {(formData.materials.reduce((sum, material) => sum + (parseFloat(material.total) || 0), 0)).toFixed(2)}€
+                      {(formData.materials.reduce((sum, material) => sum + (parseFloat(String(material.total)) || 0), 0)).toFixed(2)}€
                     </span>
                   </div>
                 </div>

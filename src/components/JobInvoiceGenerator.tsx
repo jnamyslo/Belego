@@ -409,7 +409,7 @@ export function JobInvoiceGenerator({
                   name="generationType"
                   value="single"
                   checked={generationType === 'single'}
-                  onChange={(e) => setGenerationType(e.target.value as any)}
+                  onChange={(e) => setGenerationType(e.target.value as typeof generationType)}
                   className="custom-radio"
                 />
                 <div>
@@ -426,7 +426,7 @@ export function JobInvoiceGenerator({
                   name="generationType"
                   value="daily"
                   checked={generationType === 'daily'}
-                  onChange={(e) => setGenerationType(e.target.value as any)}
+                  onChange={(e) => setGenerationType(e.target.value as typeof generationType)}
                   className="custom-radio"
                 />
                 <div>
@@ -443,7 +443,7 @@ export function JobInvoiceGenerator({
                   name="generationType"
                   value="weekly"
                   checked={generationType === 'weekly'}
-                  onChange={(e) => setGenerationType(e.target.value as any)}
+                  onChange={(e) => setGenerationType(e.target.value as typeof generationType)}
                   className="custom-radio"
                 />
                 <div>
@@ -460,7 +460,7 @@ export function JobInvoiceGenerator({
                   name="generationType"
                   value="monthly"
                   checked={generationType === 'monthly'}
-                  onChange={(e) => setGenerationType(e.target.value as any)}
+                  onChange={(e) => setGenerationType(e.target.value as typeof generationType)}
                   className="custom-radio"
                 />
                 <div>

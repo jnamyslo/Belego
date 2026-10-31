@@ -139,7 +139,7 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
     const completedJobs = filteredJobs.filter(job => job.status === 'completed').length;
     const inProgressJobs = filteredJobs.filter(job => job.status === 'in-progress').length;
     const notInvoicedJobs = filteredJobs.filter(job => job.status !== 'invoiced').length;
-    const totalHours = filteredJobs.reduce((sum: number, job: any) => sum + calculateTotalHours(job), 0);
+    const totalHours = filteredJobs.reduce((sum: number, job) => sum + calculateTotalHours(job), 0);
     
     return { totalJobs, completedJobs, inProgressJobs, notInvoicedJobs, totalHours };
   }, [filteredJobs]);
@@ -225,14 +225,14 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
   const handleStatusChange = async (jobId: string, newStatus: JobEntry['status']) => {
     try {
       // Check if current status is invoiced - prevent changes
-      const currentJob = jobEntries.find((j: any) => j.id === jobId);
+      const currentJob = jobEntries.find((j) => j.id === jobId);
       if (currentJob?.status === 'invoiced') {
         setConfirmModal({
           isOpen: true,
           title: 'Status nicht änderbar',
           message: 'Der Status von abgerechneten Aufträgen kann nicht mehr geändert werden.',
           onConfirm: () => {
-            setConfirmModal((prev: any) => ({ ...prev, isOpen: false }));
+            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
           }
         });
         return;
@@ -305,7 +305,7 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
       // Skip invoiced jobs — their status is locked (GoBD), matching the
       // single-job guard in handleStatusChange.
       const targetJobs = selectedJobIds.filter(jobId => {
-        const job = jobEntries.find((j: any) => j.id === jobId);
+        const job = jobEntries.find((j) => j.id === jobId);
         return job?.status !== 'invoiced';
       });
       const skippedCount = selectedJobIds.length - targetJobs.length;

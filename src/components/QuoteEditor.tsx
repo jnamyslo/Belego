@@ -26,7 +26,7 @@ import { useQuotes } from '../context/QuoteContext';
 import { useCustomers } from '../context/CustomerContext';
 import { useCompany } from '../context/CompanyContext';
 import { useDocumentHelpers } from '../hooks/useDocumentHelpers';
-import { Quote, QuoteItem, QuoteAttachment } from '../types';
+import { Quote, QuoteItem, QuoteAttachment, Customer } from '../types';
 import { AttachmentManager } from './AttachmentManager';
 import { calculateInvoiceWithDiscounts, validateDiscount } from '../utils/discountUtils';
 import { DocumentPreview, PreviewDocument } from './DocumentPreview';
@@ -547,7 +547,7 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
   }, [quote, customers]);
 
 
-  const handleCustomerSelect = (customer: any) => {
+  const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomerId(customer.id);
     setCustomerSearchTerm(`${formatCustomerNumber(customer.customerNumber)} - ${customer.name}`);
     setShowCustomerDropdown(false);
@@ -993,7 +993,7 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
                                 className="w-full px-3 py-2 text-left hover:bg-blue-50 rounded transition-colors"
                               >
                                 <div className="font-medium text-gray-900">
-                                  {(template as any).displayName || template.name}
+                                  {(('displayName' in template ? template.displayName : undefined) as string | undefined) || template.name}
                                 </div>
                                 <div className="text-sm text-gray-500">
                                   {rate.toFixed(2)} € / Stunde
@@ -1019,7 +1019,7 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
                                 className="w-full px-3 py-2 text-left hover:bg-blue-50 rounded transition-colors"
                               >
                                 <div className="font-medium text-gray-900">
-                                  {(template as any).displayName || template.name}
+                                  {(('displayName' in template ? template.displayName : undefined) as string | undefined) || template.name}
                                 </div>
                                 <div className="text-sm text-gray-500">
                                   {unitPrice.toFixed(2)} € / {template.unit}

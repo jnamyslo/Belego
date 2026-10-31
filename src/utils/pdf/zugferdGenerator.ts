@@ -281,8 +281,8 @@ export async function embedZUGFeRDXMLIntoPDF(pdfBuffer: ArrayBuffer, invoice: In
     
     return new Blob([pdfBytes], { type: 'application/pdf' });
     
-  } catch (error: any) {
-    logger.error('Error embedding ZUGFeRD XML into PDF:', error.message);
+  } catch (error) {
+    logger.error('Error embedding ZUGFeRD XML into PDF:', error instanceof Error ? error.message : String(error));
     return new Blob([pdfBuffer], { type: 'application/pdf' });
   }
 }

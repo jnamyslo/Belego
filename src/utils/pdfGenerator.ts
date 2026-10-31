@@ -5,7 +5,7 @@
 
 import jsPDF from 'jspdf';
 import logger from './logger';
-import { Invoice, Company, Customer, JobEntry } from '../types';
+import { Invoice, Quote, Company, Customer, JobEntry } from '../types';
 import { formatCurrency } from './formatters';
 
 // Import modular components
@@ -468,7 +468,7 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
   }
 
   // === ADD FOOTERS TO ALL PAGES ===
-  const pageCount = (pdf as any).getNumberOfPages();
+  const pageCount = pdf.getNumberOfPages();
   for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
     pdf.setPage(pageNum);
     addPDFFooter(context, pageNum, pageCount);
@@ -857,7 +857,7 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
   }
 
   // Add footers to all pages
-  const totalPages = (pdf as any).getNumberOfPages();
+  const totalPages = pdf.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     pdf.setPage(i);
     addPDFFooter(context, i, undefined); // Job PDFs show single page number
@@ -869,7 +869,7 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
 /**
  * Generate Quote PDF
  */
-export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Promise<Blob> {
+export async function generateQuotePDF(quote: Quote & { description?: string }, options: QuotePDFOptions): Promise<Blob> {
   const pdf = new jsPDF();
   
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -1037,7 +1037,7 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
   const numberOfTaxRates = Object.keys(taxBreakdownData).filter(rate => Number(rate) > 0).length;
   const showTotalTaxLine = numberOfTaxRates > 1;
   
-  const itemDiscountAmount = quote.items?.reduce((sum: number, item: any) => sum + (item.discountAmount || 0), 0) || 0;
+  const itemDiscountAmount = quote.items?.reduce((sum: number, item) => sum + (item.discountAmount || 0), 0) || 0;
   const globalDiscountAmount = quote.globalDiscountAmount || 0;
   const hasDiscountData = itemDiscountAmount > 0 || globalDiscountAmount > 0;
   
@@ -1167,7 +1167,7 @@ export async function generateQuotePDF(quote: any, options: QuotePDFOptions): Pr
   }
 
   // Add footers to all pages
-  const pageCount = (pdf as any).getNumberOfPages();
+  const pageCount = pdf.getNumberOfPages();
   for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
     pdf.setPage(pageNum);
     

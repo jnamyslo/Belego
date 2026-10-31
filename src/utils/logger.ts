@@ -6,9 +6,8 @@
 
 type LogLevel = 'ERROR' | 'WARN' | 'INFO' | 'DEBUG';
 
-interface LogMeta {
-  [key: string]: any;
-}
+// Beliebige Zusatzdaten (z. B. Error aus catch, Strings oder Objekte).
+type LogMeta = unknown;
 
 class FrontendLogger {
   private levels: Record<LogLevel, number> = {
@@ -54,7 +53,7 @@ class FrontendLogger {
   
   private formatMessage(level: LogLevel, message: string, meta?: LogMeta): string {
     const timestamp = new Date().toISOString();
-    const metaStr = meta && Object.keys(meta).length > 0 ? 
+    const metaStr = meta && Object.keys(meta as object).length > 0 ? 
       ` ${JSON.stringify(meta)}` : '';
     
     return `[${timestamp}] ${level}: ${message}${metaStr}`;
@@ -129,8 +128,8 @@ class FrontendLogger {
   }
   
   // Special method for API calls
-  api(method: string, url: string, status?: number, data?: any, error?: Error): void {
-    const meta: LogMeta = {
+  api(method: string, url: string, status?: number, data?: unknown, error?: Error): void {
+    const meta: Record<string, unknown> = {
       method: method.toUpperCase(),
       url,
       status,
@@ -148,7 +147,7 @@ class FrontendLogger {
   }
   
   // Special method for component lifecycle
-  component(componentName: string, action: string, data?: any): void {
+  component(componentName: string, action: string, data?: unknown): void {
     this.debug(`Component ${componentName}: ${action}`, data ? { data } : undefined);
   }
   
@@ -160,7 +159,7 @@ class FrontendLogger {
   }
   
   // Get stored errors for debugging
-  getStoredErrors(): any[] {
+  getStoredErrors(): unknown[] {
     try {
       return JSON.parse(sessionStorage.getItem('app_errors') || '[]');
     } catch {
@@ -180,7 +179,7 @@ const logger = new FrontendLogger();
 
 // Make logger available in window for debugging
 if (typeof window !== 'undefined') {
-  (window as any).logger = logger;
+  (window as unknown as { logger: typeof logger }).logger = logger;
 }
 
 export default logger;

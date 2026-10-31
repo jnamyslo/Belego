@@ -29,6 +29,13 @@ interface BackupManagementProps {
   onClose?: () => void;
 }
 
+interface RestoreData {
+  file?: File;
+  version?: string;
+  timestamp?: string;
+  data?: Record<string, unknown[] | undefined>;
+}
+
 export function BackupManagement({ onClose }: BackupManagementProps) {
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [zipBackups, setZipBackups] = useState<BackupInfo[]>([]);
@@ -38,7 +45,7 @@ export function BackupManagement({ onClose }: BackupManagementProps) {
   const [isRestoring, setIsRestoring] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
-  const [restoreData, setRestoreData] = useState<any>(null);
+  const [restoreData, setRestoreData] = useState<RestoreData | null>(null);
   const [restoreType, setRestoreType] = useState<'json' | 'zip'>('json');
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
 
@@ -523,7 +530,7 @@ export function BackupManagement({ onClose }: BackupManagementProps) {
                     {restoreType === 'json' && restoreData.data && (
                       <>
                         <div><strong>Tabellen:</strong> {Object.keys(restoreData.data || {}).length}</div>
-                        <div><strong>Datensätze:</strong> {Object.values(restoreData.data || {}).reduce((sum: number, records: any) => sum + (records?.length || 0), 0).toLocaleString('de-DE')}</div>
+                        <div><strong>Datensätze:</strong> {Object.values(restoreData.data || {}).reduce((sum: number, records) => sum + (records?.length || 0), 0).toLocaleString('de-DE')}</div>
                       </>
                     )}
                     {restoreType === 'zip' && restoreData.file && (

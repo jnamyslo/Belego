@@ -26,7 +26,7 @@ import { useInvoices } from '../context/InvoiceContext';
 import { useCustomers } from '../context/CustomerContext';
 import { useCompany } from '../context/CompanyContext';
 import { useDocumentHelpers } from '../hooks/useDocumentHelpers';
-import { Invoice, InvoiceItem, InvoiceAttachment } from '../types';
+import { Invoice, InvoiceItem, InvoiceAttachment, InvoiceTemplate, Customer } from '../types';
 import { AttachmentManager } from './AttachmentManager';
 import { calculateInvoiceWithDiscounts, updateItemWithDiscount, formatDiscountDisplay } from '../utils/discountUtils';
 import { DocumentPreview, PreviewDocument } from './DocumentPreview';
@@ -489,7 +489,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
     isOpen: false,
     type: 'hourlyRates'
   });
-  const [, setEditingInvoiceTemplate] = useState(null);
+  const [, setEditingInvoiceTemplate] = useState<InvoiceTemplate | null>(null);
   const [newCustomerData, setNewCustomerData] = useState({
     name: '',
     email: '',
@@ -626,7 +626,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
     `${formatCustomerNumber(selectedCustomer.customerNumber)} - ${selectedCustomer.name}` : '';
     
   // Handle customer selection
-  const handleCustomerSelect = (customer: any) => {
+  const handleCustomerSelect = (customer: Customer) => {
     setFormData(prev => ({ ...prev, customerId: customer.id }));
     setCustomerSearchTerm(`${formatCustomerNumber(customer.customerNumber)} - ${customer.name}`);
     setIsCustomerDropdownOpen(false);
@@ -1578,7 +1578,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
 
               // Check for duplicate names
               const templates = getInvoiceTemplates() || [];
-              const existingTemplate = templates.find((t: any) => 
+              const existingTemplate = templates.find((t) => 
                 t.name.toLowerCase().replace(/\s+/g, '') === newInvoiceTemplateData.name.toLowerCase().replace(/\s+/g, '')
               );
 
@@ -1751,13 +1751,13 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
               </div>
               
               <div className="grid gap-4">
-                {getInvoiceTemplates().map((template: any) => (
+                {getInvoiceTemplates().map((template) => (
                   <div key={template.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
                     <div>
                       <h4 className="font-medium text-gray-900">{template.name}</h4>
                       <p className="text-sm text-gray-600">{template.description}</p>
                       <p className="text-sm text-gray-500">
-                        {parseFloat(template.unitPrice || 0).toFixed(2)}€/{template.unit} • {template.taxRate}% MwSt.
+                        {parseFloat(String(template.unitPrice || 0)).toFixed(2)}€/{template.unit} • {template.taxRate}% MwSt.
                         {template.isDefault && <span className="ml-2 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">Standard</span>}
                       </p>
                     </div>

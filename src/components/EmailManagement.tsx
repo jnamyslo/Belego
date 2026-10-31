@@ -9,7 +9,7 @@ interface EmailHistoryItem {
   recipient_email: string;
   subject: string;
   body_html?: string;
-  attachments: any[];
+  attachments: { filename?: string; size?: number }[];
   message_id?: string;
   invoice_id?: string;
   invoice_number?: string;

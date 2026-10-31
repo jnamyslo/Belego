@@ -565,7 +565,7 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
       }
 
       // Process additional attachments (uploaded in modal)
-      let processedAttachments = attachments && attachments.length > 0 
+      const processedAttachments = attachments && attachments.length > 0 
         ? await processAttachments(attachments)
         : [];
 

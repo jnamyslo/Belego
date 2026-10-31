@@ -250,7 +250,7 @@ export function ReminderSendModal({
           const reminderPdfBase64 = await blobToBase64(reminderPdfBlob);
 
           // Prepare additional attachments (original invoice + its attachments)
-          let additionalAttachments: { name: string; content: string; contentType: string }[] = [];
+          const additionalAttachments: { name: string; content: string; contentType: string }[] = [];
           
           if (includeOriginalInvoice) {
             try {

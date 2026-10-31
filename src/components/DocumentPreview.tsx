@@ -113,7 +113,7 @@ export function DocumentPreview({ isOpen, onClose, documents = [], initialIndex 
       setPreviewUrl(null);
     }
 
-    let temporaryUrl: string | null = null;
+    const temporaryUrl: string | null = null;
 
     try {
       let blob: Blob;

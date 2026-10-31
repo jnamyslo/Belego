@@ -108,7 +108,7 @@ export const generateUniqueFileName = (originalName: string, existingNames: stri
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').substring(0, 19);
   
   // Create base name with timestamp
-  let uniqueName = `${nameWithoutExtension}_${timestamp}${extension}`;
+  const uniqueName = `${nameWithoutExtension}_${timestamp}${extension}`;
   
   // If still conflicts, add counter
   let counter = 1;

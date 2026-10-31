@@ -381,7 +381,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 <tr 
                   key={invoice.id} 
                   className="hover:bg-gray-50 cursor-pointer transition-colors duration-200"
-                  onClick={() => onNavigate('invoices', undefined, invoice.invoiceNumber)}
+                  onClick={() => onNavigate('invoices', 'all', invoice.invoiceNumber)}
                   title={`Zur Rechnung ${invoice.invoiceNumber}`}
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary-custom hover:text-primary-custom/80">
@@ -440,7 +440,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <div 
               key={invoice.id} 
               className="p-4 border-b border-gray-200 last:border-b-0 cursor-pointer hover:bg-gray-50 transition-colors"
-              onClick={() => onNavigate('invoices', undefined, invoice.invoiceNumber)}
+              onClick={() => onNavigate('invoices', 'all', invoice.invoiceNumber)}
             >
               <div className="flex justify-between items-start mb-2">
                 <div className="flex-1">

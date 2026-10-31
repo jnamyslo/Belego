@@ -15,7 +15,7 @@ export function CustomerManagement() {
   const [newEmailData, setNewEmailData] = useState({ email: '', label: '' });
   const [isAddingEmail, setIsAddingEmail] = useState(false);
   const [customerHourlyRates, setCustomerHourlyRates] = useState<HourlyRate[]>([]);
-  const [isAddingHourlyRate, setIsAddingHourlyRate] = useState(false);
+  const [, setIsAddingHourlyRate] = useState(false);
   const [editingHourlyRate, setEditingHourlyRate] = useState<HourlyRate | null>(null);
   const [isHourlyRateModalOpen, setIsHourlyRateModalOpen] = useState(false);
   const [isCreateHourlyRateModalOpen, setIsCreateHourlyRateModalOpen] = useState(false);
@@ -27,7 +27,7 @@ export function CustomerManagement() {
     isDefault: false
   });
   const [customerMaterials, setCustomerMaterials] = useState<MaterialTemplate[]>([]);
-  const [isAddingMaterial, setIsAddingMaterial] = useState(false);
+  const [, setIsAddingMaterial] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<MaterialTemplate | null>(null);
   const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
   const [isCreateMaterialModalOpen, setIsCreateMaterialModalOpen] = useState(false);

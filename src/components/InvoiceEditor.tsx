@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
 import { mergeAttachmentContent, invoiceNeedsContent } from '../utils/attachmentContent';
 import { apiService } from '../services/api';
-import { Save, X, Plus, Trash2, Calculator, Edit, ChevronUp, ChevronDown, GripVertical, Percent, Euro } from 'lucide-react';
+import { Save, X, Plus, Trash2, Calculator, Edit, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -28,7 +28,7 @@ import { useCompany } from '../context/CompanyContext';
 import { useDocumentHelpers } from '../hooks/useDocumentHelpers';
 import { Invoice, InvoiceItem, InvoiceAttachment } from '../types';
 import { AttachmentManager } from './AttachmentManager';
-import { calculateInvoiceWithDiscounts, updateItemWithDiscount, formatDiscountDisplay, validateDiscount } from '../utils/discountUtils';
+import { calculateInvoiceWithDiscounts, updateItemWithDiscount, formatDiscountDisplay } from '../utils/discountUtils';
 import { DocumentPreview, PreviewDocument } from './DocumentPreview';
 import { RatesAndMaterialsRedirectModal } from './RatesAndMaterialsRedirectModal';
 import { findDuplicateCustomer, showDuplicateCustomerAlert, formatCustomerNumber } from '../utils/customerUtils';
@@ -49,7 +49,6 @@ interface SortableInvoiceItemProps {
 
 function SortableInvoiceItem({ 
   item, 
-  index, 
   onUpdate, 
   onRemove, 
   onMoveUp, 
@@ -490,7 +489,7 @@ export function InvoiceEditor({ invoice, onClose, onCreateCustomer, onNavigateTo
     isOpen: false,
     type: 'hourlyRates'
   });
-  const [editingInvoiceTemplate, setEditingInvoiceTemplate] = useState(null);
+  const [, setEditingInvoiceTemplate] = useState(null);
   const [newCustomerData, setNewCustomerData] = useState({
     name: '',
     email: '',

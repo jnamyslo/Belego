@@ -81,7 +81,6 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
   
   const margins: PageMargins = { top: 15, bottom: 25, left: 20, right: 20 };
   let yPosition = margins.top;
-  let currentPage = 1;
 
   // Create PDF context for shared components
   const context: PDFContext = {
@@ -98,7 +97,6 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
   // Helper to check page break and handle new pages
   const handlePageBreak = async (requiredSpace: number, minimumSpace: number = 30): Promise<boolean> => {
     const result = await checkPageBreak(context, yPosition, requiredSpace, minimumSpace, async () => {
-      currentPage++;
       return await addInvoiceHeader();
     });
     
@@ -257,7 +255,6 @@ export async function generateInvoicePDF(invoice: Invoice, options: PDFOptions):
   const availableSpaceForTotals = pageHeight - yPosition - margins.bottom;
   if (totalTotalsSpace > availableSpaceForTotals && availableSpaceForTotals < 80) {
     pdf.addPage();
-    currentPage++;
     yPosition = await addInvoiceHeader();
     resetFont(pdf, darkText);
   }
@@ -497,7 +494,6 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
   
   const margins: PageMargins = { top: 15, bottom: 25, left: 20, right: 20 };
   let yPosition = margins.top;
-  let currentPage = 1;
 
   const context: PDFContext = {
     pdf,
@@ -512,7 +508,6 @@ export async function generateJobPDF(job: JobEntry, options: JobPDFOptions): Pro
 
   const handlePageBreak = async (requiredSpace: number, minimumSpace: number = 30): Promise<boolean> => {
     const result = await checkPageBreak(context, yPosition, requiredSpace, minimumSpace, async () => {
-      currentPage++;
       return await addJobHeader();
     });
     

@@ -106,7 +106,7 @@ class FrontendLogger {
       // Keep only last 50 errors
       const recentErrors = errors.slice(-50);
       sessionStorage.setItem('app_errors', JSON.stringify(recentErrors));
-    } catch (e) {
+    } catch {
       // Silently fail if sessionStorage is not available
     }
   }

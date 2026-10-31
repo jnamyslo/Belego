@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
-import { Save, Building2, Mail, Phone, Globe, CreditCard, Upload, X, Languages, Palette, Briefcase, FileText, Plus, Trash2, Database, Clock, Package, Edit2, BarChart3 } from 'lucide-react';
+import { Save, Building2, Mail, Globe, CreditCard, Upload, X, Palette, Briefcase, FileText, Plus, Trash2, Database, Clock, Package, Edit2 } from 'lucide-react';
 import { useCompany } from '../context/CompanyContext';
-import { getLocaleDisplayName } from '../utils/formatters';
 import { ColorPicker } from './ColorPicker';
 import { BackupManagement } from './BackupManagement';
 import { EmailManagement } from './EmailManagement';
@@ -203,13 +202,6 @@ export function Settings() {
     setFormData(prev => ({ ...prev, icon: null }));
     // Update favicon immediately to remove the custom icon
     updateFavicon(null);
-  };
-
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Handle file upload logic here
-    }
   };
 
   return (

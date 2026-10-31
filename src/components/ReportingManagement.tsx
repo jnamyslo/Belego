@@ -1,28 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
-import { 
-  BarChart3, 
-  Download, 
-  Calendar, 
-  FileText, 
-  TrendingUp, 
-  PieChart, 
-  Users,
-  DollarSign,
-  RefreshCw,
-  Filter,
-  X,
-  AlertCircle
-} from 'lucide-react';
+import { BarChart3, Download, FileText, TrendingUp, Users, DollarSign, RefreshCw, Filter, X, AlertCircle } from 'lucide-react';
 import { useCustomers } from '../context/CustomerContext';
 import { apiService } from '../services/api';
-import { 
-  InvoiceJournalResponse, 
-  ReportingStatistics,
-  InvoiceJournalEntry,
-  MonthlyRevenueStats,
-  CustomerStats 
-} from '../types';
+import { InvoiceJournalResponse, ReportingStatistics, InvoiceJournalEntry, CustomerStats } from '../types';
 
 export function ReportingManagement() {
   const { customers } = useCustomers();

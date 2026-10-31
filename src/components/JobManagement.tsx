@@ -1,31 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import logger from '../utils/logger';
 import { withJobContent } from '../utils/attachmentContent';
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Clock, 
-  User, 
-  Calendar, 
-  FileText, 
-  Search,
-  ChevronDown,
-  Filter,
-  TrendingUp,
-  Timer,
-  CheckCircle,
-  AlertTriangle,
-  Briefcase,
-  Download,
-  Eye,
-  PenTool,
-  Mail
-} from 'lucide-react';
+import { Plus, Edit, Trash2, Clock, User, Calendar, FileText, Search, Timer, CheckCircle, AlertTriangle, Briefcase, Download, Eye, PenTool } from 'lucide-react';
 import { useCustomers } from '../context/CustomerContext';
 import { useJobs } from '../context/JobContext';
 import { useCompany } from '../context/CompanyContext';
-import { JobEntry, Customer } from '../types';
+import { JobEntry } from '../types';
 import { JobEntryForm } from './JobEntryForm';
 import { JobInvoiceGenerator } from './JobInvoiceGenerator';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -95,15 +75,6 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
 
   // Get locale from company settings
   const locale = company?.locale || 'de-DE';
-
-  // Helper function to format currency
-  const formatCurrencyValue = (amount: number) => {
-    const currency = company?.currency || 'EUR';
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: currency
-    }).format(amount);
-  };
 
   // Filter and search jobs
   const filteredJobs = useMemo(() => {
@@ -282,16 +253,6 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
     }
   };
 
-  const getStatusText = (status: JobEntry['status']) => {
-    switch (status) {
-      case 'draft': return 'Entwurf';
-      case 'in-progress': return 'In Bearbeitung';
-      case 'completed': return 'Abgeschlossen';
-      case 'invoiced': return 'Abgerechnet';
-      default: return status;
-    }
-  };
-
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
       case 'high': return 'text-red-600';
@@ -451,10 +412,6 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
       isDestructive: true
     });
   };
-
-  // Get only completed jobs for selection
-  const completedJobIds = filteredJobs.filter(job => job.status === 'completed').map(job => job.id);
-  const selectedCompletedJobs = selectedJobIds.filter(jobId => completedJobIds.includes(jobId));
 
   const handleExportJobPDF = async (job: JobEntry) => {
     try {

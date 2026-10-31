@@ -176,7 +176,7 @@ export function BackupManagement({ onClose }: BackupManagementProps) {
           } else {
             setMessage({ type: 'error', text: 'Ungültige JSON-Backup-Datei' });
           }
-        } catch (error) {
+        } catch {
           setMessage({ type: 'error', text: 'Fehler beim Lesen der JSON-Backup-Datei' });
         }
       };

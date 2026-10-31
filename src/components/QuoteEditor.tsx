@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
 import { mergeAttachmentContent, quoteNeedsContent } from '../utils/attachmentContent';
 import { apiService } from '../services/api';
-import { Save, X, Plus, Trash2, Calculator, ChevronUp, ChevronDown, GripVertical, Percent, Euro, FileText, Eye } from 'lucide-react';
+import { Save, X, Plus, Trash2, Calculator, ChevronUp, ChevronDown, GripVertical, Percent, FileText } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -28,10 +28,10 @@ import { useCompany } from '../context/CompanyContext';
 import { useDocumentHelpers } from '../hooks/useDocumentHelpers';
 import { Quote, QuoteItem, QuoteAttachment } from '../types';
 import { AttachmentManager } from './AttachmentManager';
-import { calculateInvoiceWithDiscounts, updateItemWithDiscount, formatDiscountDisplay, validateDiscount } from '../utils/discountUtils';
+import { calculateInvoiceWithDiscounts, validateDiscount } from '../utils/discountUtils';
 import { DocumentPreview, PreviewDocument } from './DocumentPreview';
 import { RatesAndMaterialsRedirectModal } from './RatesAndMaterialsRedirectModal';
-import { findDuplicateCustomer, showDuplicateCustomerAlert, formatCustomerNumber } from '../utils/customerUtils';
+import { formatCustomerNumber } from '../utils/customerUtils';
 import { generateUUID } from '../utils/uuid';
 
 // Sortable Item Component for Drag & Drop
@@ -722,7 +722,7 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
     );
   };
 
-  const handlePreview = (attachments: (QuoteAttachment)[], initialIndex: number) => {
+  const handlePreview = (attachments: (QuoteAttachment)[]) => {
     const docs: PreviewDocument[] = attachments.map((att) => ({
       id: att.id,
       name: att.name,
@@ -820,7 +820,6 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
   };
 
   const totals = calculateTotals();
-  const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
 
   // Get templates based on dropdown mode
   const materialTemplates = company.showCombinedDropdowns 

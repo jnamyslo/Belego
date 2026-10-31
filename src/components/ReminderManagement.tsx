@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Send, Clock, Euro, AlertCircle, Check, X, Download, Mail, Eye } from 'lucide-react';
+import { Bell, Send, Clock, AlertCircle, Download, Eye } from 'lucide-react';
 import { useCustomers } from '../context/CustomerContext';
 import { useInvoices } from '../context/InvoiceContext';
 import { useCompany } from '../context/CompanyContext';
 import { apiService } from '../services/api';
-import { ReminderEligibility, Invoice, Customer } from '../types';
+import { ReminderEligibility, Invoice } from '../types';
 import logger from '../utils/logger';
 import { formatCurrency } from '../utils/formatters';
 import { generateReminderPDF } from '../utils/pdfGenerator';
@@ -102,13 +102,6 @@ export function ReminderManagement() {
   const handleReminderSuccess = async () => {
     await refreshInvoices();
     await loadData();
-  };
-
-  const getReminderStageFromStatus = (status: Invoice['status']): 1 | 2 | 3 | null => {
-    if (status === 'reminded_1x') return 1;
-    if (status === 'reminded_2x') return 2;
-    if (status === 'reminded_3x') return 3;
-    return null;
   };
 
   const handleDownloadReminder = async (invoice: Invoice, stage: 1 | 2 | 3) => {
@@ -222,15 +215,6 @@ export function ReminderManagement() {
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
         {config.label}
-      </span>
-    );
-  };
-
-  const getStageBadge = (stage: number) => {
-    const colors = ['bg-yellow-100 text-yellow-800', 'bg-orange-100 text-orange-800', 'bg-red-100 text-red-800'];
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[stage - 1] || colors[0]}`}>
-        {stage}. Mahnung
       </span>
     );
   };
@@ -444,8 +428,7 @@ function EligibleRemindersTab({
   onSelect,
   onSelectAll,
   onSendReminder,
-  onSendBulk,
-  onRefresh
+  onSendBulk
 }: EligibleRemindersTabProps) {
   if (reminders.length === 0) {
     return (
@@ -643,7 +626,6 @@ function ReminderHistoryTab({ invoices, formatDate, getStatusBadge, onDownloadRe
   return (
     <div className="space-y-6">
       {invoices.map((invoice) => {
-        const maxStage = getMaxReminderStage(invoice);
         const allStages = getAllReminderStages(invoice);
         
         return (

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
 import { mergeAttachmentContent, jobNeedsContent } from '../utils/attachmentContent';
 import { apiService } from '../services/api';
-import { X, Plus, Trash2, Save, Clock, User, Calendar, DollarSign, Edit, PenTool } from 'lucide-react';
+import { X, Plus, Trash2, Save, Clock, Calendar, DollarSign, Edit, PenTool } from 'lucide-react';
 import { JobEntry, Customer, JobMaterial, JobAttachment, JobTimeEntry, JobSignature } from '../types';
 import { useCustomers } from '../context/CustomerContext';
 import { useCompany } from '../context/CompanyContext';
@@ -11,7 +11,7 @@ import { AttachmentManager } from './AttachmentManager';
 import { DocumentPreview, PreviewDocument } from './DocumentPreview';
 import { SignaturePad } from './SignaturePad';
 import { RatesAndMaterialsRedirectModal } from './RatesAndMaterialsRedirectModal';
-import { createDefaultTimeEntry, calculateTotalHours } from '../utils/jobUtils';
+import { createDefaultTimeEntry } from '../utils/jobUtils';
 import { generateUUID } from '../utils/uuid';
 import { findDuplicateCustomer, showDuplicateCustomerAlert, formatCustomerNumber } from '../utils/customerUtils';
 
@@ -28,7 +28,7 @@ interface JobEntryFormProps {
 
 export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, onCreateCustomer, onNavigateToCustomers, onNavigateToSettings }: JobEntryFormProps) {
   const { addCustomer, refreshCustomers } = useCustomers();
-  const { company, addMaterialTemplate, updateMaterialTemplate, deleteMaterialTemplate, addHourlyRate, updateHourlyRate, deleteHourlyRate, getHourlyRates } = useCompany();
+  const { company, getHourlyRates } = useCompany();
 
   const { getHourlyRatesForCustomer, getCombinedHourlyRatesForCustomer, getCombinedMaterialTemplatesForCustomer } = useDocumentHelpers();
 
@@ -317,33 +317,6 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
   };
 
 
-
-  const handleTimeChange = (field: 'startTime' | 'endTime', value: string) => {
-    setFormData((prev: any) => {
-      const updated = { ...prev, [field]: value };
-      
-      // Auto-calculate hours if both times are set
-      if (updated.startTime && updated.endTime) {
-        const start = new Date(`2000-01-01T${updated.startTime}:00`);
-        const end = new Date(`2000-01-01T${updated.endTime}:00`);
-        let diffMs = end.getTime() - start.getTime();
-        // End time before (or equal to) start time is treated as an overnight
-        // entry (e.g. 22:00 - 06:00) rather than silently ignored.
-        if (diffMs <= 0) {
-          diffMs += 24 * 60 * 60 * 1000;
-        }
-        const diffHours = diffMs / (1000 * 60 * 60);
-
-        if (diffHours > 0) {
-          // Round to nearest minute (1/60 hour = 0.0167 hours) and format to 2 decimal places
-          const minutes = Math.round(diffHours * 60);
-          updated.hoursWorked = Math.round((minutes / 60) * 100) / 100;
-        }
-      }
-      
-      return updated;
-    });
-  };
 
   const addMaterial = (templateId?: string) => {
     let newMaterial: JobMaterial;

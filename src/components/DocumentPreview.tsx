@@ -1,23 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import logger from '../utils/logger';
-import { 
-  X, 
-  Download, 
-  ZoomIn, 
-  ZoomOut, 
-  RotateCw,
-  FileText,
-  Image,
-  File,
-  Eye,
-  EyeOff,
-  Maximize,
-  Minimize,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react';
+import { X, Download, ZoomIn, ZoomOut, RotateCw, FileText, Image, File, Eye, Maximize, Minimize, ChevronLeft, ChevronRight } from 'lucide-react';
 import { generateInvoicePDF, generateJobPDF, downloadBlob } from '../utils/pdfGenerator';
-import { Invoice, Quote, JobEntry, InvoiceAttachment, JobAttachment, Company, Customer } from '../types';
+import { Invoice, Quote, JobEntry } from '../types';
 import { useCustomers } from '../context/CustomerContext';
 import { useCompany } from '../context/CompanyContext';
 

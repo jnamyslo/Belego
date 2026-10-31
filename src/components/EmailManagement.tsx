@@ -1,28 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
-import {
-  Mail,
-  Send,
-  MessageCircle,
-  Settings,
-  TestTube,
-  RefreshCw,
-  Search,
-  Filter,
-  Calendar,
-  User,
-  FileText,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertTriangle,
-  Eye,
-  X,
-  TrendingUp,
-  Database,
-  Lock
-} from 'lucide-react';
-import { apiService } from '../services/api';
+import { Mail, Send, Settings, TestTube, RefreshCw, Search, Calendar, User, FileText, CheckCircle, XCircle, Clock, AlertTriangle, Eye, X, TrendingUp, Database, Lock } from 'lucide-react';
 
 interface EmailHistoryItem {
   id: string;
@@ -93,7 +71,7 @@ export function EmailManagement({ onClose }: EmailManagementProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
+  const [, setHasMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'sent' | 'failed'>('all');
   const [selectedEmail, setSelectedEmail] = useState<EmailHistoryItem | null>(null);

@@ -92,7 +92,7 @@ const updateWebAppManifest = (iconUrl: string) => {
     try {
       const company = JSON.parse(companyData);
       companyName = company.name || 'Belego';
-    } catch (error) {
+    } catch {
       logger.warn('Could not parse company data from localStorage');
     }
   }

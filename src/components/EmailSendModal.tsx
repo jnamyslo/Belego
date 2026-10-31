@@ -138,7 +138,7 @@ export function EmailSendModal({
     }
   ];
 
-  const isFormatDisabled = (format: 'zugferd' | 'xrechnung') => {
+  const isFormatDisabled = () => {
     return false; // Keine Beschränkungen mehr
   };
 
@@ -336,7 +336,7 @@ export function EmailSendModal({
               {formatOptions.map((option) => {
                 const IconComponent = option.icon;
                 const isSelected = selectedFormats.includes(option.value);
-                const isDisabled = isFormatDisabled(option.value);
+                const isDisabled = isFormatDisabled();
                 
                 return (
                   <label

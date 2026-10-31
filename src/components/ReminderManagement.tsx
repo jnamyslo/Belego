@@ -45,6 +45,8 @@ export function ReminderManagement() {
 
   useEffect(() => {
     loadData();
+  // Nur bei Tab-Wechsel laden; loadData ist pro Render neu.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const loadData = async () => {

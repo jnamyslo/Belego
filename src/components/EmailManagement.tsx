@@ -110,6 +110,8 @@ export function EmailManagement({ onClose }: EmailManagementProps) {
     } else if (activeTab === 'statistics') {
       loadStatistics();
     }
+  // Bewusst nur bei Tab-/Filter-Wechsel laden; Lade-Funktionen sind pro Render neu.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, currentPage, statusFilter, searchTerm]);
 
   const loadEmails = async (page = currentPage) => {

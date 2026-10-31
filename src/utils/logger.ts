@@ -35,7 +35,7 @@ class FrontendLogger {
   private getCurrentLevel(): number {
     // Check for explicit log level in localStorage (for debugging)
     const storedLevel = localStorage.getItem('LOG_LEVEL');
-    if (storedLevel && this.levels.hasOwnProperty(storedLevel)) {
+    if (storedLevel && Object.prototype.hasOwnProperty.call(this.levels, storedLevel)) {
       return this.levels[storedLevel as LogLevel];
     }
     

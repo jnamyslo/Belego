@@ -74,6 +74,8 @@ export function DocumentPreview({ isOpen, onClose, documents = [], initialIndex 
     if (!isOpen || !currentDocument) return;
 
     loadDocumentContent();
+  // Nur bei Wechsel von Öffnen-Status/Dokument neu laden; loadDocumentContent ist pro Render neu.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, currentDocument, currentIndex]);
   
 

@@ -86,6 +86,8 @@ export function useAsyncValue<T>(
   });
 
   // Using useCallback to memoize the effect
+  // deps werden vom Aufrufer vorgegeben.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedFn = useCallback(asyncFunction, deps);
 
   // Execute on mount and when deps change

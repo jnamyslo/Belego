@@ -319,7 +319,7 @@ export function JobInvoiceGenerator({
     switch (generationType) {
       case 'single':
         return `${completedJobs.length} Rechnung(en) werden erstellt (eine pro Auftrag)`;
-      case 'daily':
+      case 'daily': {
         const completedJobsByDate = completedJobs.reduce((acc: Record<string, JobEntry[]>, job: JobEntry) => {
           const dateKey = new Date(job.date).toDateString();
           if (!acc[dateKey]) {
@@ -329,7 +329,8 @@ export function JobInvoiceGenerator({
           return acc;
         }, {} as Record<string, JobEntry[]>);
         return `${Object.keys(completedJobsByDate).length} Rechnung(en) werden erstellt (eine pro Tag)`;
-      case 'weekly':
+      }
+      case 'weekly': {
         const completedJobsByWeek = completedJobs.reduce((acc: Record<string, JobEntry[]>, job: JobEntry) => {
           const date = new Date(job.date);
           // Get Monday of the week (ISO week)
@@ -347,7 +348,8 @@ export function JobInvoiceGenerator({
           return acc;
         }, {} as Record<string, JobEntry[]>);
         return `${Object.keys(completedJobsByWeek).length} Rechnung(en) werden erstellt (eine pro Woche)`;
-      case 'monthly':
+      }
+      case 'monthly': {
         const completedJobsByMonth = completedJobs.reduce((acc: Record<string, JobEntry[]>, job: JobEntry) => {
           const date = new Date(job.date);
           const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -358,6 +360,7 @@ export function JobInvoiceGenerator({
           return acc;
         }, {} as Record<string, JobEntry[]>);
         return `${Object.keys(completedJobsByMonth).length} Rechnung(en) werden erstellt (eine pro Monat)`;
+      }
       default:
         return '';
     }

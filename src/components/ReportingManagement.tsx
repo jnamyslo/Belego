@@ -30,6 +30,8 @@ export function ReportingManagement() {
   useEffect(() => {
     loadJournalData();
     loadStatistics();
+  // Nur beim Mounten laden.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadJournalData = async () => {
@@ -118,13 +120,14 @@ export function ReportingManagement() {
         // Letzter Tag des letzten Monats
         end = new Date(today.getFullYear(), today.getMonth(), 0);
         break;
-      case 'thisQuarter':
+      case 'thisQuarter': {
         const currentQuarter = Math.floor(today.getMonth() / 3);
         // Erster Tag des aktuellen Quartals
         start = new Date(today.getFullYear(), currentQuarter * 3, 1);
         // Letzter Tag des aktuellen Quartals
         end = new Date(today.getFullYear(), (currentQuarter + 1) * 3, 0);
         break;
+      }
       case 'thisYear':
         // 1. Januar des aktuellen Jahres
         start = new Date(today.getFullYear(), 0, 1);

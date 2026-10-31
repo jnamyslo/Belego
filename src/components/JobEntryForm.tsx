@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
+import { mergeAttachmentContent, jobNeedsContent } from '../utils/attachmentContent';
+import { apiService } from '../services/api';
 import { X, Plus, Trash2, Save, Clock, User, Calendar, DollarSign, Edit, PenTool } from 'lucide-react';
 import { JobEntry, Customer, JobMaterial, JobAttachment, JobTimeEntry, JobSignature } from '../types';
 import { useCustomers } from '../context/CustomerContext';
@@ -157,6 +159,23 @@ export function JobEntryForm({ job, customers, defaultDate, onSubmit, onCancel, 
     // must NOT reset an in-progress form (same class as QuoteEditor's init effect fix).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job?.id]);
+
+  // Liste liefert Anhänge ohne Inhalt: für Vorschau/Download nachladen.
+  useEffect(() => {
+    if (!job || !jobNeedsContent(job)) return;
+    let cancelled = false;
+    apiService.getJobEntry(job.id)
+      .then(full => {
+        if (!cancelled) {
+          setFormData(prev => ({
+            ...prev,
+            attachments: mergeAttachmentContent(prev.attachments || [], full.attachments || [])
+          }));
+        }
+      })
+      .catch(error => logger.error('Fehler beim Laden der Anhänge:', error));
+    return () => { cancelled = true; };
+  }, [job?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filter customers based on search term
   const filteredCustomers = customers.filter(customer =>

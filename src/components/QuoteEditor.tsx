@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
+import { mergeAttachmentContent, quoteNeedsContent } from '../utils/attachmentContent';
+import { apiService } from '../services/api';
 import { Save, X, Plus, Trash2, Calculator, ChevronUp, ChevronDown, GripVertical, Percent, Euro, FileText, Eye } from 'lucide-react';
 import {
   DndContext,
@@ -519,6 +521,18 @@ export function QuoteEditor({ quote, onClose, onCreateCustomer, onNavigateToCust
     // Intentionally keyed on `quote` only: a changing `customers` reference
     // (background refresh, add/edit elsewhere) must NOT reset an in-progress form.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quote]);
+
+  // Listen liefern Anhänge ohne Inhalt: für Vorschau/Download nachladen.
+  useEffect(() => {
+    if (!quote || !quoteNeedsContent(quote)) return;
+    let cancelled = false;
+    apiService.getQuote(quote.id)
+      .then(full => {
+        if (!cancelled) setAttachments(prev => mergeAttachmentContent(prev, full.attachments || []));
+      })
+      .catch(error => logger.error('Fehler beim Laden der Anhänge:', error));
+    return () => { cancelled = true; };
   }, [quote]);
 
   // Populate the customer search term display once customers are available,

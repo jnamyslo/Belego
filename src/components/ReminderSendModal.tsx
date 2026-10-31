@@ -8,6 +8,7 @@ import { generateReminderPDF } from '../utils/pdfGenerator';
 import { blobToBase64 } from '../utils/blobUtils';
 import { apiService } from '../services/api';
 import logger from '../utils/logger';
+import { withInvoiceContent } from '../utils/attachmentContent';
 import { DocumentPreview, PreviewDocument } from './DocumentPreview';
 
 interface ReminderSendModalProps {
@@ -278,7 +279,8 @@ export function ReminderSendModal({
               
               // Add invoice attachments if any
               if (inv.attachments && inv.attachments.length > 0) {
-                inv.attachments.forEach(attachment => {
+                const invWithContent = await withInvoiceContent(inv);
+                (invWithContent.attachments || []).forEach(attachment => {
                   additionalAttachments.push({
                     name: attachment.name,
                     content: attachment.content,

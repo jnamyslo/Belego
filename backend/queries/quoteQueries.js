@@ -31,7 +31,6 @@ export async function findAllQuotes() {
                  jsonb_build_object(
                    'id', id,
                    'name', name,
-                   'content', content,
                    'contentType', content_type,
                    'size', size,
                    'uploadedAt', uploaded_at

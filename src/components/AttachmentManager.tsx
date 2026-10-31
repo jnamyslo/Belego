@@ -313,8 +313,9 @@ export function AttachmentManager({
                     downloadAttachment(attachment);
                   }}
                   type="button"
-                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                  title="Herunterladen"
+                  disabled={!attachment.content}
+                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40 disabled:cursor-wait disabled:hover:text-gray-400"
+                  title={attachment.content ? 'Herunterladen' : 'Wird geladen...'}
                 >
                   <Download className="h-4 w-4" />
                 </button>
@@ -328,8 +329,9 @@ export function AttachmentManager({
                       onPreview(attachments, attachmentIndex);
                     }}
                     type="button"
-                    className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-                    title="Vorschau"
+                    disabled={!attachment.content}
+                    className="p-1 text-gray-400 hover:text-green-600 transition-colors disabled:opacity-40 disabled:cursor-wait disabled:hover:text-gray-400"
+                    title={attachment.content ? 'Vorschau' : 'Wird geladen...'}
                   >
                     <Eye className="h-4 w-4" />
                   </button>

@@ -341,15 +341,21 @@ export async function updateInvoice(id, data) {
 
     // Update attachments if provided
     if (updateData.attachments) {
+      // List endpoints omit attachment content, so clients may send attachments
+      // without it. Keep the stored content for those (matched by id).
+      const existing = await client.query('SELECT id, content FROM invoice_attachments WHERE invoice_id = $1', [id]);
+      const storedContent = new Map(existing.rows.map(r => [r.id, r.content]));
+
       // Delete existing attachments
       await client.query('DELETE FROM invoice_attachments WHERE invoice_id = $1', [id]);
 
       // Insert new attachments
       for (const attachment of updateData.attachments) {
+        const content = attachment.content ?? storedContent.get(attachment.id);
         await client.query(`
           INSERT INTO invoice_attachments (invoice_id, name, content, content_type, size)
           VALUES ($1, $2, $3, $4, $5)
-        `, [id, attachment.name, attachment.content, attachment.contentType, attachment.size]);
+        `, [id, attachment.name, content, attachment.contentType, attachment.size]);
       }
     }
 

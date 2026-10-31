@@ -477,6 +477,11 @@ router.put('/:id', async (req, res) => {
 
     // Handle attachments update if provided
     if (attachments !== undefined) {
+      // List endpoint omits attachment content, so clients may send attachments
+      // without it. Keep the stored content for those (matched by id).
+      const existingAtt = await client.query('SELECT id, content FROM job_attachments WHERE job_id = $1', [id]);
+      const storedContent = new Map(existingAtt.rows.map(r => [r.id, r.content]));
+
       // Delete existing attachments
       await client.query('DELETE FROM job_attachments WHERE job_id = $1', [id]);
       
@@ -486,7 +491,7 @@ router.put('/:id', async (req, res) => {
           await client.query(`
             INSERT INTO job_attachments (job_id, name, content, content_type, size)
             VALUES ($1, $2, $3, $4, $5)
-          `, [id, attachment.name, attachment.content, attachment.contentType, attachment.size]);
+          `, [id, attachment.name, attachment.content ?? storedContent.get(attachment.id), attachment.contentType, attachment.size]);
         }
       }
     }

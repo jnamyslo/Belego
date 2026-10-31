@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import logger from '../utils/logger';
+import { withJobContent } from '../utils/attachmentContent';
 import { 
   Plus, 
   Edit, 
@@ -476,9 +477,16 @@ export function JobManagement({ onNavigate }: JobManagementProps = {}) {
     }
   };
 
-  const handlePreview = (job: JobEntry) => {
-    // Create preview documents for the job
-    const documents = createJobAttachmentPreviewDocuments(job);
+  const handlePreview = async (job: JobEntry) => {
+    // Create preview documents for the job (Anhang-Inhalte bei Bedarf nachladen)
+    let documents: PreviewDocument[];
+    try {
+      documents = createJobAttachmentPreviewDocuments(await withJobContent(job));
+    } catch (error) {
+      logger.error('Fehler beim Laden der Anhänge:', error);
+      alert('Anhänge konnten nicht geladen werden.');
+      return;
+    }
     
     setDocumentPreview({
       isOpen: true,

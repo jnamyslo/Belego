@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import logger from '../utils/logger';
+import { withJobContent } from '../utils/attachmentContent';
 import { X, FileText, Calendar, Users, Check, AlertTriangle } from 'lucide-react';
 import { JobEntry, Customer, InvoiceAttachment, InvoiceItem } from '../types';
 import { useCustomers } from '../context/CustomerContext';
@@ -224,9 +225,10 @@ export function JobInvoiceGenerator({
     const attachments = [];
     
     // Add original job attachments first
-    for (const job of jobsToInvoice) {
-      if (job.attachments && job.attachments.length > 0) {
-        for (const attachment of job.attachments) {
+    for (const listJob of jobsToInvoice) {
+      if (listJob.attachments && listJob.attachments.length > 0) {
+        const job = await withJobContent(listJob);
+        for (const attachment of job.attachments || []) {
           attachments.push({
             id: generateUUID(),
             name: `${job.title}_${attachment.name}`,

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import logger from '../utils/logger';
+import { withInvoiceContent } from '../utils/attachmentContent';
 import { Clock, CheckCircle, Send, Check } from 'lucide-react';
 import { useCustomers } from '../context/CustomerContext';
 import { useInvoices } from '../context/InvoiceContext';
@@ -105,7 +106,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
       // Add selected invoice attachments to the processed attachments
       if (selectedInvoiceAttachmentIds && selectedInvoiceAttachmentIds.length > 0 && emailModal.invoice.attachments) {
-        const selectedInvoiceAttachments = emailModal.invoice.attachments.filter(att => 
+        const selectedInvoiceAttachments = ((await withInvoiceContent(emailModal.invoice)).attachments || []).filter(att => 
           selectedInvoiceAttachmentIds.includes(att.id)
         );
         

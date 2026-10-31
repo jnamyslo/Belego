@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import logger from '../utils/logger';
+import { withQuoteContent } from '../utils/attachmentContent';
 import { Plus, Edit, Trash2, Search, Download, FileText, Send, Check, Eye, FileCheck, Mail, X, CheckCircle } from 'lucide-react';
 import { useCustomers } from '../context/CustomerContext';
 import { useInvoices } from '../context/InvoiceContext';
@@ -365,9 +366,16 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
     }
   };
 
-  const handlePreview = (quote: Quote) => {
-    // Create preview documents for the quote
-    const documents = createQuoteAttachmentPreviewDocuments(quote);
+  const handlePreview = async (quote: Quote) => {
+    // Create preview documents for the quote (Anhang-Inhalte bei Bedarf nachladen)
+    let documents: PreviewDocument[];
+    try {
+      documents = createQuoteAttachmentPreviewDocuments(await withQuoteContent(quote));
+    } catch (error) {
+      logger.error('Fehler beim Laden der Anhänge:', error);
+      alert('Anhänge konnten nicht geladen werden.');
+      return;
+    }
     
     setPreviewDocuments(documents);
     setShowPreview(true);
@@ -471,7 +479,7 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
             // Honor quote-attachment selection from the modal: only applies to quotes
             // that actually own an attachment with one of the selected ids.
             if (selectedQuoteAttachmentIds && selectedQuoteAttachmentIds.length > 0 && quote.attachments) {
-              const selectedOwnAttachments = quote.attachments.filter(att =>
+              const selectedOwnAttachments = ((await withQuoteContent(quote)).attachments || []).filter(att =>
                 selectedQuoteAttachmentIds.includes(att.id)
               );
               for (const storedAttachment of selectedOwnAttachments) {
@@ -563,7 +571,7 @@ export function QuoteManagement({ onNavigate }: QuoteManagementProps = {}) {
 
       // Add selected quote attachments to the processed attachments
       if (selectedQuoteAttachmentIds && selectedQuoteAttachmentIds.length > 0 && emailModal.quote.attachments) {
-        const selectedQuoteAttachments = emailModal.quote.attachments.filter(att => 
+        const selectedQuoteAttachments = ((await withQuoteContent(emailModal.quote)).attachments || []).filter(att => 
           selectedQuoteAttachmentIds.includes(att.id)
         );
         

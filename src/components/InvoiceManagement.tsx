@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
+import { withInvoiceContent } from '../utils/attachmentContent';
 import { Plus, Edit, Trash2, Search, Download, FileText, Send, FileDown, Check, Mail, Eye } from 'lucide-react';
 import { useCustomers } from '../context/CustomerContext';
 import { useInvoices } from '../context/InvoiceContext';
@@ -249,9 +250,16 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
     });
   };
 
-  const handlePreview = (invoice: Invoice) => {
-    // Create preview documents for the invoice
-    const documents = createInvoiceAttachmentPreviewDocuments(invoice);
+  const handlePreview = async (invoice: Invoice) => {
+    // Create preview documents for the invoice (Anhang-Inhalte bei Bedarf nachladen)
+    let documents: PreviewDocument[];
+    try {
+      documents = createInvoiceAttachmentPreviewDocuments(await withInvoiceContent(invoice));
+    } catch (error) {
+      logger.error('Fehler beim Laden der Anhänge:', error);
+      alert('Anhänge konnten nicht geladen werden.');
+      return;
+    }
     
     setDocumentPreview({
       isOpen: true,
@@ -316,7 +324,7 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
 
             // Download invoice attachments if they exist and are selected (matches single-download behavior)
             const bulkSelectedAttachments = selectedAttachmentIds.length > 0
-              ? (invoice.attachments || []).filter(att => selectedAttachmentIds.includes(att.id))
+              ? ((await withInvoiceContent(invoice)).attachments || []).filter(att => selectedAttachmentIds.includes(att.id))
               : [];
             if (bulkSelectedAttachments.length > 0) {
               for (let i = 0; i < bulkSelectedAttachments.length; i++) {
@@ -404,7 +412,7 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
 
       // Download invoice attachments if they exist and are selected
       if (invoice.attachments && invoice.attachments.length > 0 && selectedAttachmentIds.length > 0) {
-        const selectedAttachments = invoice.attachments.filter(att => selectedAttachmentIds.includes(att.id));
+        const selectedAttachments = ((await withInvoiceContent(invoice)).attachments || []).filter(att => selectedAttachmentIds.includes(att.id));
         
         for (let i = 0; i < selectedAttachments.length; i++) {
           const attachment = selectedAttachments[i];
@@ -502,7 +510,7 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
             // Anhänge anfügen, die zu dieser Rechnung gehören UND ausgewählt wurden
             // (der Einzelversand filtert bereits so).
             if (selectedInvoiceAttachmentIds && selectedInvoiceAttachmentIds.length > 0 && invoice.attachments) {
-              const selectedOwnAttachments = invoice.attachments.filter(att =>
+              const selectedOwnAttachments = ((await withInvoiceContent(invoice)).attachments || []).filter(att =>
                 selectedInvoiceAttachmentIds.includes(att.id)
               );
               for (const storedAttachment of selectedOwnAttachments) {
@@ -622,7 +630,7 @@ export function InvoiceManagement({ initialFilter, initialSearchTerm, onNavigate
 
       // Add selected invoice attachments to the processed attachments
       if (selectedInvoiceAttachmentIds && selectedInvoiceAttachmentIds.length > 0 && emailModal.invoice.attachments) {
-        const selectedInvoiceAttachments = emailModal.invoice.attachments.filter(att => 
+        const selectedInvoiceAttachments = ((await withInvoiceContent(emailModal.invoice)).attachments || []).filter(att => 
           selectedInvoiceAttachmentIds.includes(att.id)
         );
         

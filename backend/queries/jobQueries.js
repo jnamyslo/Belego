@@ -58,7 +58,6 @@ export async function findAllJobs() {
                DISTINCT jsonb_build_object(
                  'id', ja.id,
                  'name', ja.name,
-                 'content', ja.content,
                  'contentType', ja.content_type,
                  'size', ja.size,
                  'uploadedAt', ja.uploaded_at
